@@ -2,8 +2,7 @@ import gymnasium
 import draccus
 from dataclasses import dataclass
 import torch
-from ppo import PPO, PPOConfig
-from ppo.networks import Actor, Critic
+from ppo import PPO, PPOConfig, Actor, Critic
 
 
 def make_acrobot_env(render_mode=None):

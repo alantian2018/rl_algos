@@ -3,7 +3,7 @@ import draccus
 from dataclasses import dataclass
 import torch
 from ppo import PPO, PPOConfig
-from ppo.networks import Actor, Critic
+from ppo import Actor, Critic
 
 def make_lunarlander_env(render_mode=None):
     return gymnasium.make("LunarLander-v3", render_mode=render_mode)

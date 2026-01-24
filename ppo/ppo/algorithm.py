@@ -8,7 +8,7 @@ from typing import Optional, Callable
 from .config import PPOConfig
 from .networks import Actor, Critic, CNNActor, CNNCritic
 from .gae import gae
-from .utils import Logger, save_checkpoint
+from utils import Logger, save_checkpoint
 
 
 class PPO:

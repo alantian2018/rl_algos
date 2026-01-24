@@ -13,10 +13,8 @@ from datetime import datetime
 import termcolor
 import numpy as np
 
-from ppo.config import PPOConfig
-from ppo.algorithm import PPO
 
-from ppo.networks import CNNActor, CNNCritic
+from ppo import PPO, CNNActor, CNNCritic, PPOConfig
 
 def make_carracing_env(render_mode=None):
     env = gymnasium.make("CarRacing-v3", continuous=False, render_mode=render_mode)

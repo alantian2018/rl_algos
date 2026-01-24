@@ -2,9 +2,8 @@ import gymnasium
 import draccus
 from dataclasses import dataclass
 import torch
-from ppo import PPO, PPOConfig
+from ppo import PPO, PPOConfig, Actor, Critic
 import numpy as np
-from ppo.networks import Actor, Critic
 class BlackjackWrapper(gymnasium.ObservationWrapper):
     def observation(self, obs):
         return np.array(obs, dtype=np.float32)

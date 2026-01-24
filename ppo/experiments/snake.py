@@ -1,7 +1,5 @@
 from env.snake import SnakeEnv
-from ppo.config import PPOConfig
-from ppo.networks import Actor, Critic, CNNActor, CNNCritic
-from ppo.algorithm import PPO
+from ppo import PPOConfig, CNNActor, CNNCritic, PPO
 from dataclasses import dataclass, replace
 from functools import partial
 from datetime import datetime
