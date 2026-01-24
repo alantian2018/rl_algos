@@ -1,6 +1,3 @@
-from .sac import SAC, SACConfig
-from .networks import Policy, Qfunction
-from .replaybuffer import ReplayBuffer, Step
+from .sac import SAC, SACConfig, Policy, Qfunction, ReplayBuffer, Step
 
 __all__ = ["SAC", "SACConfig", "Policy", "Qfunction", "ReplayBuffer", "Step"]
-

@@ -56,7 +56,13 @@ class CarRacingConfig(PPOConfig):
 def main(config: CarRacingConfig):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     config = replace(config, save_dir=f"{config.save_dir}/{timestamp}")
-    
+
+    print(termcolor.colored("="*100, 'green'))
+    print(termcolor.colored("Config: ", 'green'))   
+    for key, value in config.__dict__.items():
+        print(termcolor.colored(f"  {key}: {value}", 'green'))
+    print(termcolor.colored("="*100, 'green'))
+
     env = make_carracing_env()
 
     in_channels = config.obs_dim[2]

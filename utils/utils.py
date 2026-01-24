@@ -49,7 +49,7 @@ def load_checkpoint(
     return checkpoint
 
 
-class Logger:
+class PPOLogger:
     """Handles all wandb logging and video recording."""
     
     def __init__(
@@ -131,6 +131,109 @@ class Logger:
         self.log({
             "eval/video": wandb.Video(video, fps=30, format="mp4"),
             "eval/episode_return": episode_return,
+        }, step=step)
+    
+    def finish(self):
+        """Finish wandb run."""
+        if self.use_wandb:
+            wandb.finish()
+
+
+
+class SACLogger:
+    """Handles wandb logging for SAC."""
+    
+    def __init__(
+        self,
+        config: SACConfig,
+        make_env: Optional[Callable[..., gym.Env]] = None,
+    ):
+        self.config = config
+        self.make_env = make_env
+        self.use_wandb = getattr(config, 'wandb_project', None) is not None
+        self.video_log_freq = getattr(config, 'video_log_freq', None)
+        self.last_video_step = -1
+        
+        if self.use_wandb:
+            wandb.init(
+                project=config.wandb_project,
+                name=config.wandb_run_name,
+                config=asdict(config),
+            )
+    
+    def log(self, metrics: dict, step: int):
+        """Log metrics to wandb."""
+        if self.use_wandb:
+            wandb.log(metrics, step=step)
+    
+    def log_rollout(self, episode_returns: list, step: int):
+        """Log rollout episode statistics."""
+        if self.use_wandb and episode_returns:
+            self.log({
+                "rollout/episode_return_mean": sum(episode_returns) / len(episode_returns),
+                "rollout/episode_return_max": max(episode_returns),
+                "rollout/num_episodes": len(episode_returns),
+            }, step=step)
+    
+    def log_training(self, qf1_loss: float, qf2_loss: float, policy_loss: float, step: int):
+        """Log training metrics."""
+        if self.use_wandb:
+            self.log({
+                "train/qf1_loss": qf1_loss,
+                "train/qf2_loss": qf2_loss,
+                "train/policy_loss": policy_loss,
+            }, step=step)
+    
+    def maybe_record_video(self, policy: torch.nn.Module, step: int, device: str):
+        """Record video if it's time to do so."""
+        if not self.use_wandb or self.video_log_freq is None or self.make_env is None:
+            return
+        
+        if step == 0 or step - self.last_video_step >= self.video_log_freq:
+            self._record_video(policy, step, device)
+            self.last_video_step = step
+    
+    def _record_video(self, policy: torch.nn.Module, step: int, device: str, num_evals: int = 10):
+        eval_env = self.make_env(render_mode="rgb_array")
+        
+        all_returns = []
+        best_return = float('-inf')
+        best_frames = None
+        
+        for _ in range(num_evals):
+            frames = []
+            obs, _ = eval_env.reset()
+            obs = torch.tensor(obs, dtype=torch.float32).to(device)
+            
+            done = False
+            episode_return = 0.0
+            while not done:
+                frame = eval_env.render()
+                frames.append(frame)
+                
+                with torch.no_grad():
+                    action, _ = policy.get_action(obs)
+                if not self.config.is_continuous:
+                    action =  torch.floor(action).to(torch.int32)
+                
+                obs, reward, terminated, truncated, _ = eval_env.step(action.cpu().numpy())
+                obs = torch.tensor(obs, dtype=torch.float32).to(device)
+                episode_return += reward
+                done = terminated or truncated
+            
+            all_returns.append(episode_return)
+            if episode_return > best_return:
+                best_return = episode_return
+                best_frames = frames
+        
+        eval_env.close()
+        
+        video = np.stack(best_frames).transpose(0, 3, 1, 2)
+        self.log({
+            "eval/video": wandb.Video(video, fps=30, format="mp4"),
+            "eval/episode_return_mean": sum(all_returns) / len(all_returns),
+            "eval/episode_return_max": max(all_returns),
+            "eval/episode_return_min": min(all_returns),
         }, step=step)
     
     def finish(self):
