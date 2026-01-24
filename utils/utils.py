@@ -119,7 +119,7 @@ class Logger:
                 distribution = actor(obs)
                 action = distribution.sample()
             
-            obs, reward, terminated, truncated, _ = eval_env.step(action.cpu().numpy())
+            obs, reward, terminated, truncated, _ = eval_env.step(action[0].cpu().numpy())
             obs = torch.tensor(obs, dtype=torch.float32).to(device)
             episode_return += reward
             done = terminated or truncated
