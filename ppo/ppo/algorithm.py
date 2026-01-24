@@ -9,7 +9,7 @@ from .config import PPOConfig
 from .networks import Actor, Critic, CNNActor, CNNCritic
 from .gae import gae
 from utils import PPOLogger as Logger, save_checkpoint
-
+import termcolor
 
 class PPO:
     def __init__(self, config: PPOConfig,
@@ -46,6 +46,12 @@ class PPO:
         # Episode tracking
         self.episode_return = 0.0
         self.episode_length = 0
+
+        print(termcolor.colored("="*100, 'green'))
+        print(termcolor.colored("Config: ", 'green'))   
+        for key, value in self.config.__dict__.items():
+            print(termcolor.colored(f"  {key}: {value}", 'green'))
+        print(termcolor.colored("="*100, 'green'))
 
     def _calculate_advantages(self, rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor, gamma: float, gae_lambda: float):
         return gae(rewards, dones, values, gamma, gae_lambda)
