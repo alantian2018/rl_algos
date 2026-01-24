@@ -5,8 +5,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sac.networks import Policy, Qfunction
-from sac.replaybuffer import ReplayBuffer, Step
+from .networks import Policy, Qfunction
+from .replaybuffer import ReplayBuffer, Step
 import torch.optim as optim
 import gymnasium as gym
 from tqdm import tqdm
@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 from utils import SACLogger 
-from config import SACConfig
+from .config import SACConfig
 
 class SAC:
     def __init__(

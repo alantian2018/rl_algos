@@ -4,10 +4,8 @@ from dataclasses import dataclass
 import torch
 import sys
 import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-from sac.sac import SAC, SACConfig
+ 
+from sac import SAC, SACConfig
 
 
 class CartPoleWrapper(gymnasium.Wrapper):

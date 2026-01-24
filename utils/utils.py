@@ -7,6 +7,7 @@ from pathlib import Path
 from dataclasses import asdict
 from typing import Optional, Callable, Dict, Any
 
+import gymnasium as gym
 
 def save_checkpoint(
     path: str,
@@ -145,7 +146,7 @@ class SACLogger:
     
     def __init__(
         self,
-        config: SACConfig,
+        config: any,
         make_env: Optional[Callable[..., gym.Env]] = None,
     ):
         self.config = config
