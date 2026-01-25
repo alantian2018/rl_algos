@@ -188,7 +188,7 @@ class PPO(BaseAlgorithm):
                         new_log_probs=new_log_probs, 
                         epsilon=self.config.epsilon
                         # you want higher entropy for exploration, otherwise you'll be too greedy.
-                    ) - entropy.mean() * ecoef
+                    ) + entropy.mean() * ecoef
 
                     """
                     Now the actor is done, we need to recalibrate the critic to the new values.
