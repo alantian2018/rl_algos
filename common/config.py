@@ -8,6 +8,7 @@ class GlobalConfig:
     device: str = "cuda" if torch.cuda.is_available() \
                 else 'mps' if torch.backends.mps.is_available() \
                 else "cpu"
+    frame_stack: int = 1
 
     # Wandb
     use_wandb: bool = True

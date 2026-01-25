@@ -28,14 +28,15 @@ class CarRacingConfig(PPOConfig):
     obs_dim: tuple = (96,96,3)
     act_dim: int = 5
 
-    actor_hidden_size: int = 128
-    critic_hidden_size: int = 128  
+    actor_hidden_size: int = 256
+    critic_hidden_size: int = 256  
 
-    entropy_coefficient: float = 0.5
+    entropy_coefficient: float = 1
     entropy_decay: bool = True
     entropy_decay_steps: int = 30_000
     
     total_gradient_steps: int = 500_000
+    frame_stack: int = 4
     
     wandb_entity: str = 'apcsc'
 
@@ -50,7 +51,7 @@ class CarRacingConfig(PPOConfig):
 def main(config: CarRacingConfig):
     env = make_carracing_env()
 
-    in_channels = config.obs_dim[2]
+    in_channels = config.obs_dim[2] * config.frame_stack
     height = config.obs_dim[0]
     width = config.obs_dim[1]
    
@@ -67,6 +68,7 @@ def main(config: CarRacingConfig):
         width=width,
         hidden_size=config.critic_hidden_size,
     )
+   
      
     ppo = PPO(config, env, actor, critic, make_env=make_carracing_env)
     ppo.run_batch(config.total_gradient_steps)

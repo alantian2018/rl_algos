@@ -9,7 +9,7 @@ from .config import PPOConfig
 from .networks import Actor, Critic
 from .gae import gae
 import termcolor
-from common import BaseAlgorithm
+from common import BaseAlgorithm, FrameStack
 
 class PPO(BaseAlgorithm):
     def __init__(self, config: PPOConfig,
@@ -36,8 +36,8 @@ class PPO(BaseAlgorithm):
             self.critic = critic
 
     
-        self.actor = actor.to(config.device)
-        self.critic = critic.to(config.device)
+        self.actor = self.actor.to(config.device)
+        self.critic = self.critic.to(config.device)
         self.actor_optimizer = Adam(self.actor.parameters(), lr=config.actor_lr)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=config.critic_lr)
         self.T = config.T
@@ -45,7 +45,11 @@ class PPO(BaseAlgorithm):
        
         self.minibatch_size = config.minibatch_size
 
-        self.cur_obs = None
+        self.frame_stack = FrameStack(frames=self.config.frame_stack, raw_obs_dim = self.raw_obs_dim)
+
+        self.cur_obs, _ = self.env.reset()
+        self.cur_obs = torch.tensor(self.cur_obs, dtype=torch.float32, device=self.config.device)
+        self.frame_stack.add_to_frame_stack(data = self.cur_obs)
 
         self.load_ckpt_if_needed()
 
@@ -59,33 +63,30 @@ class PPO(BaseAlgorithm):
         
         with torch.no_grad():
             
-
             obs = torch.zeros((self.T,) + self.obs_dim, device=self.config.device)
             action = torch.zeros(self.T, device=self.config.device)
             reward = torch.zeros(self.T, device=self.config.device)
             done = torch.zeros(self.T, device=self.config.device)
             log_probs = torch.zeros(self.T, device=self.config.device)
-            
-            if self.cur_obs is None:
-                self.cur_obs, _ = self.env.reset()
-                self.cur_obs = torch.tensor(self.cur_obs, dtype=torch.float32, device=self.config.device)
 
             episode_returns = []
             for t in range(self.T):
-                distribution = self.actor(self.cur_obs)
+                cur_frame = self.frame_stack.get_frames()
+                distribution = self.actor(cur_frame)
                 actions = distribution.sample()
              
                 log_probs_ = distribution.log_prob(actions)
-                next_obs, rewards, terminated, truncated, _ = self.env.step(actions.squeeze(0).cpu().numpy())
-                
-                next_obs = torch.tensor(next_obs, dtype=torch.float32, device=self.config.device)
 
-                obs[t] = self.cur_obs
+                next_obs, rewards, terminated, truncated, _ = self.env.step(actions.squeeze(0).cpu().numpy())
+                 
+                obs[t] = cur_frame
                 action[t] = actions
                 reward[t] = rewards
                 done[t] = terminated or truncated
                 log_probs[t] = log_probs_
-                self.cur_obs = next_obs
+
+                next_obs = torch.tensor(next_obs, dtype=torch.float32, device=self.config.device)
+                self.frame_stack.add_to_frame_stack(data=next_obs)
                 
                 # Track episode stats
                 self.episode_return += rewards
@@ -97,6 +98,7 @@ class PPO(BaseAlgorithm):
                     self.episode_length = 0
                     self.cur_obs, _ = self.env.reset()
                     self.cur_obs = torch.tensor(self.cur_obs, dtype=torch.float32, device=self.config.device)
+                    self.frame_stack.add_to_frame_stack(data=self.cur_obs)
 
                     
             return obs, action, reward, done, log_probs.detach(), episode_returns

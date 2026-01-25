@@ -2,13 +2,12 @@ import torch
 import numpy as np
 import wandb
 import gymnasium
-import os
 from pathlib import Path
 from dataclasses import asdict
 from typing import Optional, Callable, Dict, Any
 from torch import nn
-import gymnasium as gym
 import termcolor
+from collections import deque
 import signal, pdb
 signal.signal(signal.SIGUSR1, lambda s,f: pdb.set_trace())
 
@@ -30,7 +29,7 @@ class Logger:
         self.save_dir = save_dir
         
         if self.use_wandb:
-            run = wandb.init(
+            wandb.init(
                 entity=config.wandb_entity,
                 project=config.wandb_project,
                 name=config.wandb_run_name,
@@ -135,16 +134,20 @@ class Logger:
         
         done = False
         episode_return = 0.0
+        frame_stack = FrameStack(frames = self.config.frame_stack)
+        frame_stack.add_to_frame_stack(obs)
         while not done:
+
             frame = eval_env.render()
             frames.append(frame)
             
             with torch.no_grad():
-                distribution = actor(obs)
+                distribution = actor(frame_stack.get_frames())
                 action = distribution.sample()
             
             obs, reward, terminated, truncated, _ = eval_env.step(action.squeeze(0).cpu().numpy())
             obs = torch.tensor(obs, dtype=torch.float32).to(device)
+            frame_stack.add_to_frame_stack(obs)
             episode_return += reward
             done = terminated or truncated
         
@@ -162,4 +165,24 @@ class Logger:
         if self.use_wandb:
             wandb.finish()
 
+
+
+class FrameStack:
+    def __init__(self, frames: int, raw_obs_dim: Optional[tuple] = None):
+        self.max_frames = frames
+        self.frame_stack = deque(maxlen=frames)
+        self.raw_obs_dim = raw_obs_dim
+
+    def add_to_frame_stack(self, data: torch.Tensor):
+        if self.raw_obs_dim:
+            assert data.shape == self.raw_obs_dim
+        
+        self.frame_stack.append(data.detach().clone())
+        while len(self.frame_stack) < self.max_frames:
+            self.frame_stack.append(data.detach().clone())
+       
+    def get_frames(self): 
+        return torch.concatenate(list(self.frame_stack), dim=-1)
+
+        
 

@@ -5,6 +5,7 @@ from datetime import datetime
 from .utils import Logger
 import termcolor 
 
+
 class BaseAlgorithm:
     def __init__(
             self,
@@ -23,8 +24,10 @@ class BaseAlgorithm:
 
 
         dummy_obs, _ = env.reset()
-        self.obs_dim = dummy_obs.shape
+        self.raw_obs_dim = dummy_obs.shape
+        self.obs_dim = self.raw_obs_dim[:-1] + (self.raw_obs_dim[-1] * self.config.frame_stack,)
         self.logger = Logger(config, make_env=make_env, save_dir=save_dir)
+       
 
         print(termcolor.colored("="*100, 'green'))
         print(termcolor.colored("Config: ", 'green'))   
@@ -53,7 +56,3 @@ class BaseAlgorithm:
                 networks=self._get_networks(),
                 step=step
             )
-        
-
-        
-

@@ -52,7 +52,7 @@ class SAC:
         self.episode_returns = []
         
         # Logger
-        self.logger = SACLogger(config, make_env=make_env)
+        self.logger = Logger(config, make_env=make_env)
         
         
     def collect_rollout(self):
