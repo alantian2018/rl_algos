@@ -42,7 +42,7 @@ class PPO(BaseAlgorithm):
         self.critic_optimizer = Adam(self.critic.parameters(), lr=config.critic_lr)
         self.T = config.T
         self.entropy_coefficient = config.entropy_coefficient
-        self.entropy_decay = config.entropy_coefficient
+       
         self.minibatch_size = config.minibatch_size
 
         self.cur_obs = None
@@ -136,7 +136,7 @@ class PPO(BaseAlgorithm):
         }
 
     def _get_entropy_coefficient(self, step, total_grad_steps):
-        if not self.entropy_decay:
+        if not self.config.entropy_decay:
             return self.entropy_coefficient
         else:
             return self.entropy_coefficient * (1 - (step / total_grad_steps))
