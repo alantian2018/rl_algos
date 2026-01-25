@@ -136,10 +136,15 @@ class PPO(BaseAlgorithm):
         }
 
     def _get_entropy_coefficient(self, step, total_grad_steps):
+        if self.config.entropy_decay_steps is None:
+            denom = total_grad_steps
+        else:
+            denom = self.config.entropy_decay_steps
+
         if not self.config.entropy_decay:
             return self.entropy_coefficient
         else:
-            return self.entropy_coefficient * (1 - (step / total_grad_steps))
+            return max( 0.01, self.entropy_coefficient * (1 - (step / denom)) )
 
     
     def run_batch(self, total_gradient_steps: int):
@@ -182,13 +187,17 @@ class PPO(BaseAlgorithm):
                     """
                     ecoef=self._get_entropy_coefficient(step=t, total_grad_steps=total_gradient_steps)
                     new_log_probs, entropy = self._get_log_prob_and_entropy(batch_obs, batch_actions)
-                    actor_loss = self._actor_loss(
+
+                    
+                    raw_actor_loss = self._actor_loss(
                         advantages=normalized_batch_advantages, 
                         old_log_probs=batch_log_probs, 
                         new_log_probs=new_log_probs, 
                         epsilon=self.config.epsilon
-                        # you want higher entropy for exploration, otherwise you'll be too greedy.
-                    ) - entropy.mean() * ecoef
+                    ) 
+                    # you to reward higher entropy for exploration, otherwise you'll be too greedy.
+                    entropy_bonus = entropy.mean() * ecoef
+                    actor_loss = raw_actor_loss - entropy_bonus
 
                     """
                     Now the actor is done, we need to recalibrate the critic to the new values.
@@ -218,6 +227,8 @@ class PPO(BaseAlgorithm):
                             'critic_loss': critic_loss.item(),
                             'entropy' : entropy.mean().item(),
                             'entropy_coef': ecoef,
+                            "raw_actor_loss": raw_actor_loss.item(),
+                            "entropy_bonus": entropy_bonus.item(), 
                         },
                         step=t
                     )

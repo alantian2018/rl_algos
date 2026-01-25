@@ -30,11 +30,10 @@ class CarRacingConfig(PPOConfig):
 
     actor_hidden_size: int = 128
     critic_hidden_size: int = 128  
-    # lower epsilon  
-    epsilon: float = 0.1
 
-    entropy_coefficient: float = 1
+    entropy_coefficient: float = 0.5
     entropy_decay: bool = True
+    entropy_decay_steps: int = 30_000
     
     total_gradient_steps: int = 500_000
     
