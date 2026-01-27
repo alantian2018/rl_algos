@@ -1,16 +1,11 @@
 import sys
 import os
-#sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 import gymnasium
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 import draccus
 from dataclasses import dataclass, replace
-from functools import partial
-from datetime import datetime
-import termcolor
 import numpy as np
 
 
@@ -55,7 +50,8 @@ class CarRacingConfig(PPOConfig):
     critic_hidden_size: int = 128  
 
     entropy_coefficient: float = 0.05
-    entropy_decay: bool = False
+    entropy_decay: bool = True
+    entropy_decay_steps: bool = 5000
     minibatch_size: int = 64
     T: int = 2048
     epsilon: int = 0.1
@@ -75,9 +71,7 @@ class CarRacingConfig(PPOConfig):
 
 @draccus.wrap()
 def main(config: CarRacingConfig):
-    env = make_carracing_env()
- 
-    
+    env = make_carracing_env(normalize=True)
     obs, _ = env.reset()
 
     in_channels = config.obs_dim[2] * config.frame_stack
