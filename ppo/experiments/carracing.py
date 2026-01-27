@@ -16,9 +16,27 @@ import numpy as np
 
 from ppo import PPOConfig, PPO, CarRacingActor, CarRacingCritic
 
+
+
 def make_carracing_env(render_mode=None):
     env = gymnasium.make("CarRacing-v3", continuous=False, render_mode=render_mode)
-    return env
+
+    # Normalize uint8 pixel observations to float32 in range (0, 1)
+    class _NormalizeObsWrapper(gymnasium.Wrapper):
+        def _normalize(self, obs):
+            if isinstance(obs, np.ndarray) and obs.dtype == np.uint8:
+                return (obs.astype(np.float32) / 255.0)
+            return obs
+
+        def reset(self, **kwargs):
+            obs, info = self.env.reset(**kwargs)
+            return self._normalize(obs), info
+
+        def step(self, action):
+            obs, reward, terminated, truncated, info = self.env.step(action)
+            return self._normalize(obs), reward, terminated, truncated, info
+
+    return _NormalizeObsWrapper(env)
 
 
 @dataclass 
@@ -28,13 +46,13 @@ class CarRacingConfig(PPOConfig):
     obs_dim: tuple = (96,96,3)
     act_dim: int = 5
 
-    actor_hidden_size: int = 256
-    critic_hidden_size: int = 256  
+    actor_hidden_size: int = 128
+    critic_hidden_size: int = 128  
 
     entropy_coefficient: float = 0.05
     entropy_decay: bool = False
-    minibatch_size: int = 128
-    T: int = 8192
+    minibatch_size: int = 64
+    T: int = 2048
     epsilon: int = 0.1
     
     total_gradient_steps: int = 500_000
@@ -47,12 +65,13 @@ class CarRacingConfig(PPOConfig):
     save_freq: int = 10_000
 
     device: str = 'cpu'
-    path_to_checkpoint: str = 'ppo/checkpoints/carracing/20260126_175202/checkpoint_9999.pt'
+  #  path_to_checkpoint: str = 'ppo/checkpoints/carracing/20260126_175202/checkpoint_9999.pt'
 
 
 @draccus.wrap()
 def main(config: CarRacingConfig):
     env = make_carracing_env()
+    
 
     in_channels = config.obs_dim[2] * config.frame_stack
     height = config.obs_dim[0]
