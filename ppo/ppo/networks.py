@@ -93,7 +93,7 @@ class SnakeCritic(Module):
         return self.fc(x)
 
 
-class CarRacingActor(Module):
+class ImageActor(Module):
     """Downsampling CNN tailored for 96x96x3 CarRacing observations."""
     def __init__(self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int):
         super().__init__()
@@ -135,7 +135,7 @@ class CarRacingActor(Module):
         return Categorical(logits=logits)
 
 
-class CarRacingCritic(Module):
+class ImageCritic(Module):
     """Downsampling CNN critic for 96x96x3 CarRacing observations."""
     def __init__(self, in_channels: int, height: int, width: int, hidden_size: int):
         super().__init__()

@@ -1,31 +1,31 @@
 import gymnasium
 import draccus
 from dataclasses import dataclass
-
-
-from ppo import PPOConfig, PPO, ImageActor, ImageCritic
+import numpy as np
+import ale_py
 from common import NormalizeObsWrapper
+from ppo import PPOConfig, PPO, ImageActor, ImageCritic
 
-def make_carracing_env(render_mode=None, normalize=True):
-    env = gymnasium.make("CarRacing-v3", continuous=False, render_mode=render_mode,)
+
+def make_breakout_env(render_mode=None, normalize=True, obs_type="grayscale"):
+    env = gymnasium.make("ALE/Breakout-v5", obs_type=obs_type, render_mode=render_mode,)
     if not normalize:
         return env
-    
     return NormalizeObsWrapper(env)
 
 
 @dataclass 
-class CarRacingConfig(PPOConfig):
-    exp_name: str = "carracing"
+class BreakoutConfig(PPOConfig):
+    exp_name: str = "breakout"
 
-    obs_dim: tuple = (96,96,3)
-    act_dim: int = 5
+    obs_dim: tuple = (210,160,1)
+    act_dim: int = 4
 
     actor_hidden_size: int = 128
     critic_hidden_size: int = 128  
 
-    entropy_coefficient: float = 0.01
-    entropy_decay: bool = False
+    entropy_coefficient: float = 0.05
+    entropy_decay: bool = True
     entropy_decay_steps: bool = 100_000
     minibatch_size: int = 64
     T: int = 2048
@@ -34,19 +34,18 @@ class CarRacingConfig(PPOConfig):
     total_gradient_steps: int = 500_000
     frame_stack: int = 4
     
-    wandb_entity: str = 'apcsc'
 
     video_log_freq: int = 2_000
     
     save_freq: int = 10_000
 
     device: str = 'cpu'
-    path_to_checkpoint: str = 'ppo/checkpoints/carracing/20260127_173026/checkpoint_9999.pt'
 
 
 @draccus.wrap()
-def main(config: CarRacingConfig):
-    env = make_carracing_env(normalize=True)
+def main(config: BreakoutConfig):
+    env = make_breakout_env()
+   
     obs, _ = env.reset()
 
     in_channels = config.obs_dim[2] * config.frame_stack
@@ -67,7 +66,7 @@ def main(config: CarRacingConfig):
         hidden_size=config.critic_hidden_size,
     )
    
-    ppo = PPO(config, env, actor, critic, make_env=make_carracing_env)
+    ppo = PPO(config, env, actor, critic, make_env=make_breakout_env)
     ppo.run_batch(config.total_gradient_steps)
 
 
