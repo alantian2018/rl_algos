@@ -47,7 +47,7 @@ python -m ppo.experiments.carracing
 ## Results on `Wandb`!
 
 ### PPO
-- [Car Racing](https://wandb.ai/apcsc/ppo-carracing?nw=nwuseralantian2018)
+- [Car Racing](https://wandb.ai/alantian2018/ppo-carracing)
 - [Snake](https://wandb.ai/alantian2018/ppo-snake/runs/j1jym4xk)
 - [CartPole](https://wandb.ai/alantian2018/ppo-cartpole?nw=nwuseralantian2018)
 - [LunarLander](https://wandb.ai/alantian2018/ppo-lunarlander?nw=nwuseralantian2018)
