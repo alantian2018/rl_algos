@@ -38,8 +38,8 @@ python -m ppo.experiments.carracing
 ### PPO (Proximal Policy Optimization)
 > See [ppo/ppo/algorithm.py](ppo/ppo/algorithm.py) for the PPO implementation and [ppo/ppo/gae.py](ppo/ppo/gae.py) for Generalized Advantage Estimation.
 
-### SAC (Soft Actor-Critic) ***[WIP]***
-> See [sac/sac.py](sac/sac.py) for the SAC implementation
+### SAC (Soft Actor-Critic) 
+> See [sac/sac.py](sac/sac/algorithm.py) for the SAC implementation
 
 ---
 
@@ -54,7 +54,7 @@ python -m ppo.experiments.carracing
 - [Acrobot](https://wandb.ai/alantian2018/ppo-acrobot?nw=nwuseralantian2018)
 
 ### SAC
-- [Pendulum](https://wandb.ai/alantian2018/sac-cartpole?nw=nwuseralantian2018)
+- [Pendulum](https://wandb.ai/alantian2018/sac-pendulum?nw=nwuseralantian2018)
 
 ---
 Some of the boilerplate (`eg configs, wandb logging, utils, etc`) were handled by opus 4.5 :)
