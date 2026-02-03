@@ -14,6 +14,7 @@ class BaseAlgorithm:
             make_env: Optional[Callable[..., gymnasium.Env]] = None,
     ):
         self.config = config
+        self.device = config.device
         self.env = env
 
         save_dir = None

@@ -145,7 +145,10 @@ class Logger:
                 distribution = actor(frame_stack.get_frames())
                 action = distribution.sample()
             
-            obs, reward, terminated, truncated, _ = eval_env.step(action.squeeze(0).cpu().numpy())
+            try:
+                obs, reward, terminated, truncated, _ = eval_env.step(action.squeeze(0).cpu().numpy())
+            except IndexError:
+                obs, reward, terminated, truncated, _ = eval_env.step(action.cpu().numpy())
             obs = torch.tensor(obs, dtype=torch.float32).to(device)
             frame_stack.add_to_frame_stack(obs)
             episode_return += reward

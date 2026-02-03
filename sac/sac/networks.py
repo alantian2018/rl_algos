@@ -62,9 +62,15 @@ class Policy(nn.Module):
         action_scaled = (action + 1) / 2 * (self.action_high - self.action_low) + self.action_low
 
         log_probs = dist.log_prob(u)
+
+        # log probs after tanh
         log_probs -= torch.log(1 - action.pow(2) + 1e-6)
+
+        # log probs after action rescaling
+        log_probs -= torch.log(torch.tensor((self.action_high - self.action_low) / 2.0))
         
         log_probs = torch.reshape(log_probs, (-1, self.action_dim))
+        
         
         return action_scaled, log_probs.sum(dim=1, keepdim=True)
         
