@@ -43,9 +43,10 @@ class BaseAlgorithm:
     def load_ckpt_if_needed(self):
         if self.config.path_to_checkpoint:
             path = self.config.path_to_checkpoint
-            self.logger.load_checkpoint(path = path,
+            networks = self.logger.load_checkpoint(path = path,
                                         networks=self._get_networks())
             print(termcolor.colored(f'loaded ckpt from {path}', 'green'))
+            return networks
     
     def _get_networks(self):
         raise NotImplementedError

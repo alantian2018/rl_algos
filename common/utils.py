@@ -67,7 +67,8 @@ class Logger:
         **kwargs,
     ):
         """Save a training checkpoint."""
-
+        if self.save_dir is None:
+            return
         path = f"{self.save_dir}/checkpoint_{step}.pt"
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -110,10 +111,11 @@ class Logger:
                 except:
                     print(termcolor.colored(f'WARNING! Failed to load {key}', 'yellow'))
             else:
+                
                 networks[key] = checkpoint[key]
 
         print(termcolor.colored( f"Loaded checkpoint from {path} (step {checkpoint['step']})", 'green'))
-        return checkpoint
+        return networks
 
     def maybe_record_video(self, actor: torch.nn.Module, step: int, device: str):
         """Record video if it's time to do so."""

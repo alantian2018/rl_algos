@@ -247,8 +247,6 @@ class PPO(BaseAlgorithm):
                     break
         
         pbar.close()
-        
         self.save_ckpt(step=t)
-        
         self.logger.finish()
 

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 from common import GlobalConfig
 @dataclass(kw_only=True)
 class SACConfig(GlobalConfig):
-    state_dim: int
+    state_dim: Union[int, tuple]
     action_dim: int
     hidden_dim: int = 64
 
@@ -14,9 +14,9 @@ class SACConfig(GlobalConfig):
 
     # entropy stuff
     alpha: float = 0.2
-    autotune_entropy: float = True
-    target_entropy: Optional[int] = None
-    alpha_lr: int = 3e-4
+    autotune_entropy: bool = True
+    target_entropy: Optional[float] = None
+    alpha_lr: float = 3e-4
 
     # learning hyperparams
     batch_size: int = 256
@@ -29,7 +29,6 @@ class SACConfig(GlobalConfig):
     before_training_steps: int = 1000
     gradient_step_ratio: int = 1 # num of gradient steps per rollout step
     collect_rollout_steps: int = 1000
-    device: str = "cpu"
     action_low: float = 9999
     action_high: float = 9999
     is_continuous: bool = True

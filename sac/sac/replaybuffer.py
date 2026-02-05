@@ -1,46 +1,40 @@
-from collections import deque
 import numpy as np
-from dataclasses import dataclass
-import torch
-
-@dataclass
-class Step:
-    obs: np.ndarray | torch.Tensor | list
-    action: np.ndarray 
-    reward: float
-    next_obs: np.ndarray | torch.Tensor | list
-    terminated: bool
-    truncated: bool
 
 class ReplayBuffer:
-    def __init__(self, capacity: int = 1_000_000):
-        self.buffer = deque(maxlen=capacity)
+    def __init__(self, obs_dim, action_dim, capacity=1_000_000):
         self.capacity = capacity
+        self.ptr = 0
+        self.size = 0
 
-    def add(self, step: Step): 
-        self.buffer.append(step)
+        self.obs = np.zeros((capacity,) +  obs_dim, dtype=np.float32)
+        self.actions = np.zeros((capacity, action_dim), dtype=np.float32)
+        self.rewards = np.zeros((capacity, 1), dtype=np.float32)
+        self.next_obs = np.zeros((capacity,) + obs_dim, dtype=np.float32)
+        self.terminated = np.zeros((capacity, 1), dtype=np.float32)
+        self.truncated = np.zeros((capacity, 1), dtype=np.float32)
 
-    def sample(self, size: int):
-        if len(self.buffer) < size:
-            raise ValueError('Please add more data')
-            
-        indices = np.random.choice( range(len(self.buffer)), size=size, replace=False)
-        obs_out = np.array([self.buffer[i].obs for i in indices])
-        action_out = np.array([self.buffer[i].action for i in indices])
-        reward_out = np.array([self.buffer[i].reward for i in indices])
-        next_obs_out = np.array([self.buffer[i].next_obs for i in indices])
-        terminated_out = np.array([self.buffer[i].terminated for i in indices])
-        truncated_out = np.array([self.buffer[i].truncated for i in indices])
+    def add(self, obs, action, reward, next_obs, terminated, truncated):
+        self.obs[self.ptr] = obs
+        self.actions[self.ptr] = action
+        self.rewards[self.ptr] = reward
+        self.next_obs[self.ptr] = next_obs
+        self.terminated[self.ptr] = terminated
+        self.truncated[self.ptr] = truncated
+
+        self.ptr = (self.ptr + 1) % self.capacity
+        self.size = min(self.size + 1, self.capacity)
+
+    def sample(self, batch_size):
+        idx = np.random.randint(0, self.size, size=batch_size)
 
         return (
-            obs_out, 
-            action_out, 
-            reward_out, 
-            next_obs_out, 
-            terminated_out, 
-            truncated_out,
-            indices
+            self.obs[idx],
+            self.actions[idx],
+            self.rewards[idx],
+            self.next_obs[idx],
+            self.terminated[idx],
+            self.truncated[idx],
         )
 
     def __len__(self):
-        return len(self.buffer)
+        return self.size

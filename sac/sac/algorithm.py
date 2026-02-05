@@ -1,11 +1,10 @@
 from dataclasses import dataclass, asdict
 from typing import Optional, Callable
-import sys
-import os
+ 
 
 from common.base_algorithm import BaseAlgorithm
 from .networks import Policy, Qfunction
-from .replaybuffer import ReplayBuffer, Step
+from .replaybuffer import ReplayBuffer
 import torch.optim as optim
 import gymnasium as gym
 from tqdm import tqdm
@@ -14,22 +13,27 @@ import torch
 from termcolor import colored
 import torch.nn.functional as F
 from .config import SACConfig
+from copy import deepcopy
 
 class SAC(BaseAlgorithm):
     def __init__(
         self, 
         config: SACConfig, 
+        policy: Policy,
+        qf1: Qfunction,
+        qf2: Qfunction,
         env: gym.Env,
         make_env: Optional[Callable[..., gym.Env]] = None,
     ):
         super().__init__(config=config, env=env, make_env=make_env)
         
-        self.policy = Policy(config.state_dim, config.action_dim, config.action_low, config.action_high, config.hidden_dim).to(self.device)
-        self.qf1 = Qfunction(config.state_dim, config.action_dim, config.hidden_dim).to(self.device)
-        self.qf2 = Qfunction(config.state_dim, config.action_dim, config.hidden_dim).to(self.device)
+        self.policy = policy.to(self.device)
+        self.qf1 = qf1.to(self.device)
+        self.qf2 = qf2.to(self.device)
 
-        self.target_qf1 = Qfunction(config.state_dim, config.action_dim, config.hidden_dim).to(self.device)
-        self.target_qf2 = Qfunction(config.state_dim, config.action_dim, config.hidden_dim).to(self.device)
+        self.target_qf1 = deepcopy(qf1).to(self.device)
+        self.target_qf2 = deepcopy(qf2).to(self.device)
+        # just to be safe load state dict
         self.target_qf1.load_state_dict(self.qf1.state_dict())
         self.target_qf2.load_state_dict(self.qf2.state_dict())
 
@@ -39,7 +43,7 @@ class SAC(BaseAlgorithm):
         self.optimizer_qf2 = optim.Adam(self.qf2.parameters(), lr=config.critic_lr)
 
          
-        self.replay_buffer = ReplayBuffer(capacity=config.replay_buffer_capacity)
+        self.replay_buffer = ReplayBuffer(capacity=config.replay_buffer_capacity, obs_dim=self.obs_dim, action_dim = config.action_dim)
 
         self.old_obs, _ = self.env.reset()
 
@@ -60,7 +64,10 @@ class SAC(BaseAlgorithm):
         # Episode tracking
         self.episode_return = 0.0
         self.episode_returns = []
-        self.load_ckpt_if_needed()
+        loaded = self.load_ckpt_if_needed()
+        if loaded and 'replay_buffer' in loaded:
+            self.replay_buffer = loaded['replay_buffer']   
+            print(colored(f"Loaded replay buffer of length {len(self.replay_buffer)}",'green'))
 
     def _maybe_autotune_entropy(self, obs):
         if self.config.autotune_entropy:
@@ -83,7 +90,8 @@ class SAC(BaseAlgorithm):
               "target_qf1" : self.target_qf1,
               "target_qf2" : self.target_qf2,
               "policy" : self.policy,
-              "policy_optimizer" : self.optimizer_policy
+              "policy_optimizer" : self.optimizer_policy,
+              "replay_buffer" : self.replay_buffer
           }
           if self.config.autotune_entropy:
               networks['log_alpha'] = self.log_alpha 
@@ -98,17 +106,20 @@ class SAC(BaseAlgorithm):
                 action, _ = self.policy.get_action(obs_tensor)
                 if not self.config.is_continuous:
                     action = torch.floor(action).to(torch.int32)
-
-                next_obs, reward, terminated, truncated, _ = self.env.step(action.detach().cpu().numpy())                
-                step = Step(self.old_obs.copy(), 
-                            action.detach().cpu().numpy(),
-                            reward,
-                            next_obs.copy(),
-                            terminated,
-                            truncated
-                        )
+              
+                try:
+                    next_obs, reward, terminated, truncated, _ = self.env.step(action.detach().cpu().numpy())       
+                except:
+                    next_obs, reward, terminated, truncated, _ = self.env.step(action.squeeze(0).detach().cpu().numpy())       
                 
-                self.replay_buffer.add(step)
+                self.replay_buffer.add(
+                    obs=self.old_obs.copy(),
+                    action=action.detach().cpu().numpy(),
+                    reward=reward,
+                    next_obs=next_obs,
+                    terminated=terminated,
+                    truncated=truncated
+                )
                 self.old_obs = next_obs
                 
                 # Track episode return
@@ -124,9 +135,9 @@ class SAC(BaseAlgorithm):
             dones = terminated #| truncated
             
             next_obs_tensor = torch.tensor(next_obs, dtype=torch.float32).to(self.device)
-            reward_tensor = torch.tensor(reward, dtype=torch.float32).to(self.device).unsqueeze(-1)
-            dones_tensor = torch.tensor(dones, dtype=torch.float32).to(self.device).unsqueeze(-1)
-
+            reward_tensor = torch.tensor(reward, dtype=torch.float32).to(self.device) 
+            dones_tensor = torch.tensor(dones, dtype=torch.float32).to(self.device) 
+        
             sampled_actions, log_probs = self.policy.get_action(next_obs_tensor)
         
             q1 = self.target_qf1(next_obs_tensor, sampled_actions) 
@@ -195,13 +206,13 @@ class SAC(BaseAlgorithm):
             policy_loss_total = 0.0
             
             for _ in range(self.config.gradient_step_ratio):
-                obs, action, reward, next_obs, terminated, truncated, _ = self.replay_buffer.sample(self.config.batch_size)
+                obs, action, reward, next_obs, terminated, truncated, = self.replay_buffer.sample(self.config.batch_size)
                 
                 obs_tensor = torch.tensor(obs, dtype=torch.float32).to(self.device)
                 action_tensor = torch.tensor(action, dtype=torch.float32).to(self.device)
                 
                 q_target = self.calculate_q_target(next_obs, reward, terminated, truncated).detach()
- 
+               
                 qf1_loss = F.mse_loss(self.qf1(obs_tensor, action_tensor), q_target)
                 qf2_loss = F.mse_loss(self.qf2(obs_tensor, action_tensor), q_target)
                 self.update_qf(qf1_loss, qf2_loss)
@@ -228,10 +239,12 @@ class SAC(BaseAlgorithm):
                         "qf1_loss" : qf1_loss_total / self.config.gradient_step_ratio,
                         "qf2_loss" : qf2_loss_total / self.config.gradient_step_ratio,
                         "policy_loss" : policy_loss_total / self.config.gradient_step_ratio,
-                        "alpha": self.alpha
+                        "alpha": self.alpha,
+                     
                       
                     },
                     step=step
                 )
-        
+            self.logger.maybe_save_checkpoint(step=step, networks=self._get_networks())
+        self.logger.save_checkpoint(step=total_train_steps, networks=self._get_networks())
         self.logger.finish()
