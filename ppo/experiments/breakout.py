@@ -41,6 +41,8 @@ class BreakoutConfig(PPOConfig):
 
     device: str = 'cpu'
 
+    path_to_checkpoint: str = "/Users/alantian/work/rl/ppo/checkpoints/breakout/20260128_152730/checkpoint_239999.pt"
+
 
 @draccus.wrap()
 def main(config: BreakoutConfig):
