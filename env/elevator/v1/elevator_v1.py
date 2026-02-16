@@ -148,8 +148,8 @@ class ElevatorWrapper:
         return np.array(elevator_obs).flatten()
 
     def calculate_reward(self, num_unloaded, did_invalid_action, waiting_people, elevator_waiting_times):   
-        
-        reward = sum(num_unloaded) - 10 if did_invalid_action else 0
+        reward = sum(num_unloaded) 
+        reward -= 10 if did_invalid_action else 0
         # add timestep penalty
        
         reward -= sum([time for times in elevator_waiting_times for time in times]) * 0.01

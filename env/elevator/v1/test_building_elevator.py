@@ -397,3 +397,82 @@ class TestElevatorWrapper:
 
         np.testing.assert_array_almost_equal(obs1, obs2)
         assert reward1 == reward2
+
+    def test_reward_no_unloads_no_waiting_no_invalid(self):
+        """Idle with empty building: reward should be 0."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        waiting_people = [[[], []] for _ in range(5)]
+        _, reward, _, _ = wrapper.step([1], waiting_people, timestep=0)
+        assert reward == 0.0
+
+    def test_reward_invalid_action_penalty(self):
+        """Invalid action (e.g. DOWN at floor 0) incurs -10 penalty."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        waiting_people = [[[], []] for _ in range(5)]
+        _, reward, _, _ = wrapper.step([0], waiting_people, timestep=0)  # DOWN at floor 0
+        assert reward == pytest.approx(-10.0)
+
+    def test_reward_invalid_up_at_top(self):
+        """Invalid UP at top floor incurs -10 penalty."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        waiting_people = [[[], []] for _ in range(5)]
+        for _ in range(4):
+            wrapper.step([2], waiting_people, timestep=0)  # move to floor 4
+        _, reward, _, _ = wrapper.step([2], waiting_people, timestep=0)  # invalid UP at top
+        assert reward == pytest.approx(-10.0)
+
+    def test_reward_people_waiting_penalty(self):
+        """More people waiting on floors = more negative reward."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+
+        waiting_empty = [[[], []] for _ in range(5)]
+        _, reward_empty, _, _ = wrapper.step([1], waiting_empty, timestep=0)
+
+        p1 = Person(0, 2, 0)
+        p2 = Person(1, 3, 0)
+        waiting_two = [[[p1], []], [[p2], []], [[], []], [[], []], [[], []]]
+        wrapper2 = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper2.reset()
+        _, reward_two, _, _ = wrapper2.step([1], waiting_two, timestep=0)
+
+        assert reward_empty == 0.0
+        assert reward_two == pytest.approx(-0.02)  # 2 people * 0.01 each
+
+    def test_reward_elevator_waiting_time_penalty(self):
+        """Longer time passengers spend in elevator = more negative reward."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        p = Person(0, 2, 0)
+        waiting = [[[p], []], [[], []], [[], []], [[], []], [[], []]]
+        wrapper.step([2], waiting, timestep=0)  # load, 0->1. Passenger in, waited 0
+        obs, reward, _, _ = wrapper.step([2], waiting, timestep=1)  # 1->2. Passenger waited 1 step
+        # elevator_waiting_times = [1], reward = 0 - 1*0.01 = -0.01
+        assert reward == pytest.approx(-0.01)
+        np.testing.assert_array_equal(obs, np.array([0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.]))
+        # Step 3: at floor 2, unload (1 person). Unload happens before elevator_waiting_times computed,
+        # so carrying_people is empty → no waiting penalty. reward = +1 for delivery.
+        obs, reward, _, _ = wrapper.step([2], waiting, timestep=2)  # UP: unload at 2, move to 3
+        np.testing.assert_array_equal(obs, np.array([0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 1.]))
+        assert reward == pytest.approx(1.0)
+
+    def test_reward_unload_with_invalid_still_penalized(self):
+        """If we unload someone but also do invalid action, we get num_unloaded - 10."""
+        np.random.seed(SEED)
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        p = Person(3, 4, 0)
+        waiting = [[[], []], [[], []], [[], []], [[p], []], [[], []]]
+        for _ in range(3):
+            wrapper.step([2], waiting, timestep=0)  # 0->1->2->3
+        wrapper.step([2], waiting, timestep=0)  # at 3, load, move to 4
+        _, reward, _, _ = wrapper.step([2], waiting, timestep=0)  # at 4, unload (1), invalid UP
+        assert reward == pytest.approx(-9.0)  # 1 unloaded - 10 invalid penalty
