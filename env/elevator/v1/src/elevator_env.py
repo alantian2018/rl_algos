@@ -3,6 +3,7 @@ import numpy as np
 from .building import Building
 from .elevator_v1 import ElevatorWrapper
 
+
 class ElevatorEnv(gym.Env):
     def __init__(self, num_elevators, num_floors, max_people=None):
         super().__init__()
@@ -20,7 +21,7 @@ class ElevatorEnv(gym.Env):
     def reset(self):
         floor_state, people_on_each_floor = self.building.reset()
         elevator_obs = self.elevator_wrapper.reset()
-        return (np.concatenate([floor_state.flatten(), elevator_obs]),)
+        return np.concatenate([floor_state.flatten(), elevator_obs])
 
     def render(self, mode="human"):
         # building.get_state => returns floor_states (ie up/down for each floor) and people on each floor

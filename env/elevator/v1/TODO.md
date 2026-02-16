@@ -23,3 +23,4 @@
     - We can test with 1 elevator first to skirt this, but will be necessary when we have >2 elevator envs. Action space is equivalent to MultiDiscrete in SB3, e.g. 
     `[action] * num_elevators`
 3. Try different loss functions
+4. Testing. Use `python -m pytest env/elevator/v1/testing/ -v` to run all tests in the env

@@ -1,4 +1,4 @@
-from src import ElevatorEnv
+from ..src.elevator_env import ElevatorEnv
 
 # TODO write tests for this to make sure it's gym compatible
 # rendering would also be nice

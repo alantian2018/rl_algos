@@ -10,8 +10,8 @@ import numpy as np
 import sys
 from pathlib import Path
 
-from src import Building, Person
-from src import Elevator, ElevatorWrapper
+from ..src.building import Building, Person
+from ..src.elevator_v1 import Elevator, ElevatorWrapper
 
 SEED = 42
 
@@ -551,6 +551,7 @@ class TestElevatorWrapper:
     def test_reward_elevator_waiting_time_penalty(self):
         """Longer time passengers spend in elevator = more negative reward."""
         np.random.seed(SEED)
+
         wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
         wrapper.reset()
         p = Person(0, 2, 0)

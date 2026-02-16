@@ -1,4 +1,4 @@
-from env.snake.snake import SnakeEnv
+from env import SnakeEnv
 from ppo import PPOConfig, SnakeActor, SnakeCritic, PPO
 from dataclasses import dataclass
 from functools import partial
