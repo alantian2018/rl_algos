@@ -24,8 +24,6 @@ class ElevatorEnv(gym.Env):
         self.num_elevators = num_elevators
 
 
-
-
 # need smth to spawn ppl in and encode it i guess.
 class Building:
     def __init__(self, num_floors, max_people = None):

@@ -16,7 +16,7 @@ Observation space: People States, elevator floors (store target floors of curren
 reward = mse on people waiting time.
 
 ## how to design classes?
-- people tracking (both number, source floor, and signal it gives to the building (up/down or target floor))
+- Building (both number, source floor, and signal it gives to the building (up/down or target floor))
     - bernoulli for now, poisson later(?)
     - Observation -> floor, call elevator signal
 - elevator (should be independent of people states) 
@@ -26,7 +26,7 @@ reward = mse on people waiting time.
 - elevator wrapper class methods
     - mask steps out for nonconcurrent actions later
 
-- building needs to tie everything together
+- Elevator env needs to tie everything together
     - step (for all elevators)
     - observation (people obs + elevator obs)
     - reset -> floor 0 idle for all elevs

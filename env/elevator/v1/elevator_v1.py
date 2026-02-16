@@ -150,5 +150,7 @@ class ElevatorWrapper:
             for direction in floor:
                 reward -= len(direction) * 0.01
         return reward
+        # elevator reward function
+        # add the people waiting penalty
 
 
