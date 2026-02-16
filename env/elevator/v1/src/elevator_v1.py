@@ -28,11 +28,8 @@ class Elevator:
         start_floor=0,
     ):
         self.max_floor = max_floor
-
-        self.current_floor = start_floor
-        self.last_action = 0
-        self.carrying_people = []
-        self.target_floors = np.zeros(max_floor)
+        self.start_floor = start_floor
+        self.reset()
 
     def load_people(self, waiting_people, action):
         if action == ElevatorActions.UP:
@@ -57,7 +54,7 @@ class Elevator:
         return num_unloaded
 
     def reset(self):
-        self.current_floor = 0
+        self.current_floor = self.start_floor
         self.last_action = 0
         self.carrying_people = []
         self.target_floors = np.zeros(self.max_floor)
@@ -81,7 +78,7 @@ class Elevator:
         action -= 1
 
         assert action in [-1, 0, 1], "Invalid action"
- 
+
         self.last_action = action
 
         # unload ppl here

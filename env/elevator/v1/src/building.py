@@ -14,16 +14,13 @@ class Building:
     def __init__(self, num_floors, max_people=None):
         # up, down -> returned to the observation
         # can change later if we wanna do target floor elevators.
-        self.floor_states = np.zeros((num_floors, 2), dtype=bool)
-        # num ppl up, num ppl down
-        self.people_on_each_floor = np.zeros((num_floors, 2), dtype=int)
 
         self.num_floors = num_floors
         if max_people is None:
             max_people = num_floors * 2
         self.max_people = max_people
-        self.waiting_people = [[[], []] for _ in range(num_floors)]
-        self.number_people_waiting = 0
+        self.floor_states = np.zeros((num_floors, 2), dtype=bool)
+        self.reset()
 
     def reset(self):
         self.floor_states = np.zeros((self.num_floors, 2), dtype=bool)

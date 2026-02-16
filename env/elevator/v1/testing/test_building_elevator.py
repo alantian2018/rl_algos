@@ -186,7 +186,7 @@ class TestElevator:
         elevator = Elevator(max_floor=5, start_floor=3)
         elevator.step(2, [[[], []] for _ in range(5)], timestep=0)  # UP
         obs = elevator.reset()
-        assert elevator.current_floor == 0
+        assert elevator.current_floor == 3
         assert elevator.carrying_people == []
         assert obs.shape == (
             5 + 5 + 3,
