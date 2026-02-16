@@ -5,6 +5,7 @@ from torch.distributions import Categorical
 
 class Actor(Module):
     """Actor network -> policy pi(a|s)"""
+
     def __init__(self, obs_dim: int, act_dim: int, hidden_size: int):
         super().__init__()
         self.net = Sequential(
@@ -16,7 +17,7 @@ class Actor(Module):
         )
 
     def forward(self, obs: torch.Tensor) -> Categorical:
-        if obs.dim==1:
+        if obs.dim == 1:
             obs = obs.unsqueeze(0)
 
         return Categorical(logits=self.net(obs))
@@ -24,6 +25,7 @@ class Actor(Module):
 
 class Critic(Module):
     """Critic network -> value function V(s)"""
+
     def __init__(self, obs_dim: int, hidden_size: int):
         super().__init__()
         self.net = Sequential(
@@ -31,9 +33,9 @@ class Critic(Module):
             ReLU(),
             Linear(hidden_size, 1),
         )
-    
+
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        if obs.dim==1:
+        if obs.dim == 1:
             obs = obs.unsqueeze(0)
 
         return self.net(obs)
@@ -41,7 +43,10 @@ class Critic(Module):
 
 class SnakeActor(Module):
     """CNN Actor network -> policy pi(a|s) for image observations."""
-    def __init__(self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int):
+
+    def __init__(
+        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int
+    ):
         super().__init__()
         self.conv = Sequential(
             Conv2d(in_channels, hidden_size, kernel_size=3, stride=1, padding=1),
@@ -69,6 +74,7 @@ class SnakeActor(Module):
 
 class SnakeCritic(Module):
     """CNN Critic network -> value function V(s) for image observations."""
+
     def __init__(self, in_channels: int, height: int, width: int, hidden_size: int):
         super().__init__()
         self.conv = Sequential(
@@ -95,7 +101,10 @@ class SnakeCritic(Module):
 
 class ImageActor(Module):
     """Downsampling CNN tailored for 96x96x3 CarRacing observations."""
-    def __init__(self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int):
+
+    def __init__(
+        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int
+    ):
         super().__init__()
         # aggressive downsampling: kernel/stride choices inspired by Atari-style nets
         self.conv = Sequential(
@@ -137,6 +146,7 @@ class ImageActor(Module):
 
 class ImageCritic(Module):
     """Downsampling CNN critic for 96x96x3 CarRacing observations."""
+
     def __init__(self, in_channels: int, height: int, width: int, hidden_size: int):
         super().__init__()
         self.conv = Sequential(

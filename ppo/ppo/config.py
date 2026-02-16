@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from common import GlobalConfig
 from datetime import datetime
- 
+
 
 @dataclass(kw_only=True)
 class PPOConfig(GlobalConfig):
@@ -25,16 +25,11 @@ class PPOConfig(GlobalConfig):
 
     # prefer ppo-specific checkpoint folder when save_dir is not provided
     save_dir: Optional[str] = None
-    
+
     def __post_init__(self):
-       
+
         if self.save_dir is None:
-            self.save_dir = f'ppo/checkpoints/{self.exp_name}'
+            self.save_dir = f"ppo/checkpoints/{self.exp_name}"
 
-           
         if self.wandb_project is None and self.use_wandb:
-            self.wandb_project = f'ppo-{self.exp_name}'
-
-
-
-        
+            self.wandb_project = f"ppo-{self.exp_name}"

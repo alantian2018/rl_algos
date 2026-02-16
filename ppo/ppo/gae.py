@@ -7,6 +7,7 @@ where Q(s,a) is not directly available but V(s) is available via critic network.
 Q(s,a) can be broken into r(s,a) + gamma * V(s_t+1). Then:
 A(s,a) = Q(s,a) - V(s) = r(s,a) + gamma * V(s_t+1) - V(s)
 """
+
 import torch
 
 """
@@ -23,9 +24,14 @@ Consider
         we want to penalize the critic for being wrong and push actor towards the better 
         than expected states (via higher advantage)
 """
-def delta(reward: float, current_value: torch.Tensor, next_value: torch.Tensor, gamma: float) -> torch.Tensor:
+
+
+def delta(
+    reward: float, current_value: torch.Tensor, next_value: torch.Tensor, gamma: float
+) -> torch.Tensor:
     """Temporal difference error."""
     return reward + gamma * next_value - current_value
+
 
 """""
 But how do we know which moves are actually giving us the advantage? 
@@ -54,11 +60,19 @@ Where:
         lambda tells us we need to trust our critic (tries to filter out the luck),
                but also trust the future trajectory (tells us if our move is actually bad).
 """
-def gae(rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor, gamma: float, gae_lambda: float) -> torch.Tensor:
+
+
+def gae(
+    rewards: torch.Tensor,
+    dones: torch.Tensor,
+    values: torch.Tensor,
+    gamma: float,
+    gae_lambda: float,
+) -> torch.Tensor:
     """Compute Generalized Advantage Estimation."""
     T = len(rewards)
     advantages = torch.zeros_like(rewards)
-    
+
     for t in range(T - 1, -1, -1):
         if t == T - 1 or dones[t]:
             # No future value for last timestep or terminal states
@@ -77,6 +91,5 @@ def gae(rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor, gamma:
             )
             # A_t = delta_t + gamma * lambda * A_t+1
             advantages[t] = current_delta + gamma * gae_lambda * advantages[t + 1]
-    
-    return advantages
 
+    return advantages

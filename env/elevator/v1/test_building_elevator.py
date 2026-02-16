@@ -17,7 +17,6 @@ sys.path.insert(0, str(v1_dir))
 from building import Building, Person
 from elevator_v1 import Elevator, ElevatorWrapper, ElevatorActions
 
-
 SEED = 42
 
 
@@ -117,7 +116,9 @@ class TestElevator:
         obs = elevator.reset()
         assert elevator.current_floor == 0
         assert elevator.carrying_people == []
-        assert obs.shape == (5 + 5 + 3,)  # floor one-hot + target one-hot + action one-hot
+        assert obs.shape == (
+            5 + 5 + 3,
+        )  # floor one-hot + target one-hot + action one-hot
 
     def test_get_state_shape(self):
         np.random.seed(SEED)
@@ -129,7 +130,9 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, did_invalid, wait_times = elevator.step(1, waiting_people, timestep=0)
+        obs, num_unloaded, did_invalid, wait_times = elevator.step(
+            1, waiting_people, timestep=0
+        )
         assert elevator.current_floor == 0
         assert num_unloaded == 0
         assert did_invalid is False
@@ -175,7 +178,9 @@ class TestElevator:
         waiting_people = [
             [[], []],  # floor 0
             [[person_up], [person_down]],  # floor 1: 1 going up, 1 going down
-            [[], []], [[], []], [[], []],
+            [[], []],
+            [[], []],
+            [[], []],
         ]
         # Go UP to load people going up (step 1: at floor 1, load, move to 2)
         elevator.step(2, waiting_people, timestep=0)
@@ -197,7 +202,9 @@ class TestElevator:
         waiting_people = [[[], []] for _ in range(5)]
         for i in range(4):  # 4 UP steps: 0->1->2->3->4
             elevator.step(2, waiting_people, timestep=i)
-            assert elevator.current_floor == i + 1, f"After {i+1} UP steps, expected floor {i+1}"
+            assert (
+                elevator.current_floor == i + 1
+            ), f"After {i+1} UP steps, expected floor {i+1}"
         assert elevator.current_floor == 4
 
     def test_down_sequence_full_building(self):
@@ -216,7 +223,9 @@ class TestElevator:
         elevator = Elevator(max_floor=5, start_floor=3)
         person_to_floor_0 = Person(src_floor=3, target_floor=0, time_created=0)
         waiting_people = [
-            [[], []], [[], []], [[], []],
+            [[], []],
+            [[], []],
+            [[], []],
             [[], [person_to_floor_0]],  # floor 3: 1 going down
             [[], []],
         ]
@@ -228,7 +237,9 @@ class TestElevator:
         # Go down to floor 0
         elevator.step(0, waiting_people, timestep=1)  # 2->1
         elevator.step(0, waiting_people, timestep=2)  # 1->0
-        obs, num_unloaded, _, _ = elevator.step(1, waiting_people, timestep=3)  # idle to unload
+        obs, num_unloaded, _, _ = elevator.step(
+            1, waiting_people, timestep=3
+        )  # idle to unload
         assert num_unloaded == 1
         assert elevator.current_floor == 0
 
@@ -248,11 +259,15 @@ class TestElevator:
         elevator = Elevator(max_floor=5, start_floor=2)
         person_going_down = Person(src_floor=2, target_floor=0, time_created=0)
         waiting_people = [
-            [[], []], [[], []],
+            [[], []],
+            [[], []],
             [[], [person_going_down]],  # floor 2: person going down
-            [[], []], [[], []],
+            [[], []],
+            [[], []],
         ]
-        elevator.step(2, waiting_people, timestep=0)  # UP - should NOT load person going down
+        elevator.step(
+            2, waiting_people, timestep=0
+        )  # UP - should NOT load person going down
         assert len(elevator.carrying_people) == 0
         assert len(waiting_people[2][1]) == 1
 
@@ -262,11 +277,15 @@ class TestElevator:
         elevator = Elevator(max_floor=5, start_floor=2)
         person_going_up = Person(src_floor=2, target_floor=4, time_created=0)
         waiting_people = [
-            [[], []], [[], []],
+            [[], []],
+            [[], []],
             [[person_going_up], []],  # floor 2: person going up
-            [[], []], [[], []],
+            [[], []],
+            [[], []],
         ]
-        elevator.step(0, waiting_people, timestep=0)  # DOWN - should NOT load person going up
+        elevator.step(
+            0, waiting_people, timestep=0
+        )  # DOWN - should NOT load person going up
         assert len(elevator.carrying_people) == 0
         assert len(waiting_people[2][0]) == 1
 
@@ -305,7 +324,9 @@ class TestElevator:
         waiting_people = [
             [[p_floor2], []],
             [[p_floor4], []],
-            [[], []], [[], []], [[], []],
+            [[], []],
+            [[], []],
+            [[], []],
         ]
         # Floor 0: load p_floor2, move to 1
         elevator.step(2, waiting_people, timestep=0)
@@ -332,7 +353,10 @@ class TestElevator:
         p_up = Person(src_floor=0, target_floor=4, time_created=0)
         p_down = Person(src_floor=4, target_floor=0, time_created=0)
         waiting_people = [
-            [[p_up], []], [[], []], [[], []], [[], []],
+            [[p_up], []],
+            [[], []],
+            [[], []],
+            [[], []],
             [[], [p_down]],  # floor 4 going down
         ]
         # Load at 0, go up to 4
@@ -375,8 +399,10 @@ class TestElevatorWrapper:
         wrapper.reset()
         waiting_people = [[[], []] for _ in range(5)]
         actions = [1, 1]  # both idle
-        obs, reward, total_unloaded, info = wrapper.step(actions, waiting_people, timestep=0)
-      
+        obs, reward, total_unloaded, info = wrapper.step(
+            actions, waiting_people, timestep=0
+        )
+
         assert obs.shape == (2 * (5 + 5 + 3),)
         assert "did_invalid_actions" in info
         assert "elevator_waiting_times" in info
@@ -413,7 +439,9 @@ class TestElevatorWrapper:
         wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
         wrapper.reset()
         waiting_people = [[[], []] for _ in range(5)]
-        _, reward, _, _ = wrapper.step([0], waiting_people, timestep=0)  # DOWN at floor 0
+        _, reward, _, _ = wrapper.step(
+            [0], waiting_people, timestep=0
+        )  # DOWN at floor 0
         assert reward == pytest.approx(-10.0)
 
     def test_reward_invalid_up_at_top(self):
@@ -424,7 +452,9 @@ class TestElevatorWrapper:
         waiting_people = [[[], []] for _ in range(5)]
         for _ in range(4):
             wrapper.step([2], waiting_people, timestep=0)  # move to floor 4
-        _, reward, _, _ = wrapper.step([2], waiting_people, timestep=0)  # invalid UP at top
+        _, reward, _, _ = wrapper.step(
+            [2], waiting_people, timestep=0
+        )  # invalid UP at top
         assert reward == pytest.approx(-10.0)
 
     def test_reward_people_waiting_penalty(self):
@@ -454,14 +484,24 @@ class TestElevatorWrapper:
         p = Person(0, 2, 0)
         waiting = [[[p], []], [[], []], [[], []], [[], []], [[], []]]
         wrapper.step([2], waiting, timestep=0)  # load, 0->1. Passenger in, waited 0
-        obs, reward, _, _ = wrapper.step([2], waiting, timestep=1)  # 1->2. Passenger waited 1 step
+        obs, reward, _, _ = wrapper.step(
+            [2], waiting, timestep=1
+        )  # 1->2. Passenger waited 1 step
         # elevator_waiting_times = [1], reward = 0 - 1*0.01 = -0.01
         assert reward == pytest.approx(-0.01)
-        np.testing.assert_array_equal(obs, np.array([0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.]))
+        np.testing.assert_array_equal(
+            obs,
+            np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]),
+        )
         # Step 3: at floor 2, unload (1 person). Unload happens before elevator_waiting_times computed,
         # so carrying_people is empty → no waiting penalty. reward = +1 for delivery.
-        obs, reward, _, _ = wrapper.step([2], waiting, timestep=2)  # UP: unload at 2, move to 3
-        np.testing.assert_array_equal(obs, np.array([0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 1.]))
+        obs, reward, _, _ = wrapper.step(
+            [2], waiting, timestep=2
+        )  # UP: unload at 2, move to 3
+        np.testing.assert_array_equal(
+            obs,
+            np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]),
+        )
         assert reward == pytest.approx(1.0)
 
     def test_reward_unload_with_invalid_still_penalized(self):
@@ -474,5 +514,7 @@ class TestElevatorWrapper:
         for _ in range(3):
             wrapper.step([2], waiting, timestep=0)  # 0->1->2->3
         wrapper.step([2], waiting, timestep=0)  # at 3, load, move to 4
-        _, reward, _, _ = wrapper.step([2], waiting, timestep=0)  # at 4, unload (1), invalid UP
+        _, reward, _, _ = wrapper.step(
+            [2], waiting, timestep=0
+        )  # at 4, unload (1), invalid UP
         assert reward == pytest.approx(-9.0)  # 1 unloaded - 10 invalid penalty

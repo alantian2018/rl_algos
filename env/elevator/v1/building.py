@@ -2,16 +2,17 @@ import numpy as np
 from dataclasses import dataclass
 import gymnasium as gym
 from elevator_v1 import ElevatorWrapper
- 
+
 
 @dataclass
 class Person:
-    src_floor : int
-    target_floor : int
-    time_created : float
- 
+    src_floor: int
+    target_floor: int
+    time_created: float
+
+
 class ElevatorEnv(gym.Env):
-    def __init__(self, num_elevators, num_floors, max_people = None):
+    def __init__(self, num_elevators, num_floors, max_people=None):
         super().__init__()
         self.building = Building(num_floors, max_people)
         self.elevator_wrapper = ElevatorWrapper(num_elevators, num_floors, max_people)
@@ -22,24 +23,26 @@ class ElevatorEnv(gym.Env):
 
 # need smth to spawn ppl in and encode it i guess.
 class Building:
-    def __init__(self, num_floors, max_people = None):
-                                         # up, down -> returned to the observation
+    def __init__(self, num_floors, max_people=None):
+        # up, down -> returned to the observation
         # can change later if we wanna do target floor elevators.
         self.floor_states = np.zeros((num_floors, 2), dtype=bool)
-                                       #num ppl up, num ppl down
-        self.people_on_each_floor =np.zeros((num_floors, 2), dtype=int)
+        # num ppl up, num ppl down
+        self.people_on_each_floor = np.zeros((num_floors, 2), dtype=int)
 
         self.num_floors = num_floors
         if max_people is None:
             max_people = num_floors * 2
         self.max_people = max_people
-        self.waiting_people = [
-            [[], []] for _ in range(num_floors)
-        ]
+        self.waiting_people = [[[], []] for _ in range(num_floors)]
         self.number_people_waiting = 0
-    
-    def spawn_people(self,  timestep, p=0.01,):
-    
+
+    def spawn_people(
+        self,
+        timestep,
+        p=0.01,
+    ):
+
         if self.number_people_waiting >= self.max_people:
             return
 
@@ -67,16 +70,9 @@ class Building:
             if len(self.waiting_people[floor][1]) > 0:
                 self.floor_states[floor][1] = True
                 self.people_on_each_floor[floor][1] = len(self.waiting_people[floor][1])
-       
-
 
     def get_waiting_people(self):
         return self.waiting_people
 
     def get_building_state(self):
-        return (
-            self.floor_states,
-            self.people_on_each_floor
-        )
-    
-  
+        return (self.floor_states, self.people_on_each_floor)

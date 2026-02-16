@@ -1,12 +1,13 @@
 import numpy as np
 
+
 class ReplayBuffer:
     def __init__(self, obs_dim, action_dim, capacity=1_000_000):
         self.capacity = capacity
         self.ptr = 0
         self.size = 0
 
-        self.obs = np.zeros((capacity,) +  obs_dim, dtype=np.float32)
+        self.obs = np.zeros((capacity,) + obs_dim, dtype=np.float32)
         self.actions = np.zeros((capacity, action_dim), dtype=np.float32)
         self.rewards = np.zeros((capacity, 1), dtype=np.float32)
         self.next_obs = np.zeros((capacity,) + obs_dim, dtype=np.float32)
