@@ -2,13 +2,13 @@
 # no marl for now
 
 import gymnasium
-from enum import Enum
+from enum import IntEnum
 import numpy as np
 
 
 # action space = [up, down, idle] * num elevators
 # one time step => do the step and ignore momentum
-class ElevatorActions(Enum):
+class ElevatorActions(IntEnum):
     IDLE = 0
     UP = 1
     DOWN = -1
@@ -81,9 +81,8 @@ class Elevator:
         action -= 1
 
         assert action in [-1, 0, 1], "Invalid action"
-        action = ElevatorActions(action)
-
-        self.last_action = action.value
+ 
+        self.last_action = action
 
         # unload ppl here
         num_unloaded = self.unload_people()
@@ -103,7 +102,7 @@ class Elevator:
         elif action == ElevatorActions.DOWN and self.current_floor == 0:
             did_invalid_action = True
         else:
-            self.current_floor += action.value
+            self.current_floor += action
 
         obs = self.get_state()
 
