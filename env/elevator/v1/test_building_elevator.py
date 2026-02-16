@@ -190,6 +190,169 @@ class TestElevator:
         assert num_unloaded == 1
         assert len(elevator.carrying_people) == 0
 
+    def test_up_sequence_full_building(self):
+        """Elevator moves from floor 0 to top, verifying position at each step."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5)
+        waiting_people = [[[], []] for _ in range(5)]
+        for i in range(4):  # 4 UP steps: 0->1->2->3->4
+            elevator.step(2, waiting_people, timestep=i)
+            assert elevator.current_floor == i + 1, f"After {i+1} UP steps, expected floor {i+1}"
+        assert elevator.current_floor == 4
+
+    def test_down_sequence_full_building(self):
+        """Elevator moves from top to bottom."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=4)
+        waiting_people = [[[], []] for _ in range(5)]
+        for i in range(4):  # 4 DOWN steps: 4->3->2->1->0
+            elevator.step(0, waiting_people, timestep=i)
+            assert elevator.current_floor == 3 - i
+        assert elevator.current_floor == 0
+
+    def test_load_passengers_going_down(self):
+        """UP loads floor[0] (going up), DOWN loads floor[1] (going down)."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=3)
+        person_to_floor_0 = Person(src_floor=3, target_floor=0, time_created=0)
+        waiting_people = [
+            [[], []], [[], []], [[], []],
+            [[], [person_to_floor_0]],  # floor 3: 1 going down
+            [[], []],
+        ]
+        # Must go DOWN to load people going down
+        elevator.step(0, waiting_people, timestep=0)  # DOWN: load, move to 2
+        assert len(elevator.carrying_people) == 1
+        assert elevator.carrying_people[0].target_floor == 0
+        assert waiting_people[3][1] == []
+        # Go down to floor 0
+        elevator.step(0, waiting_people, timestep=1)  # 2->1
+        elevator.step(0, waiting_people, timestep=2)  # 1->0
+        obs, num_unloaded, _, _ = elevator.step(1, waiting_people, timestep=3)  # idle to unload
+        assert num_unloaded == 1
+        assert elevator.current_floor == 0
+
+    def test_idle_does_not_load_passengers(self):
+        """Elevator at floor with waiting people; idle does not pick them up."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5)
+        person = Person(src_floor=0, target_floor=2, time_created=0)
+        waiting_people = [[[person], []], [[], []], [[], []], [[], []], [[], []]]
+        elevator.step(1, waiting_people, timestep=0)  # idle
+        assert len(elevator.carrying_people) == 0
+        assert len(waiting_people[0][0]) == 1  # still waiting
+
+    def test_up_does_not_load_passengers_going_down(self):
+        """When going UP, we only load people going up (floor[0]), not down (floor[1])."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=2)
+        person_going_down = Person(src_floor=2, target_floor=0, time_created=0)
+        waiting_people = [
+            [[], []], [[], []],
+            [[], [person_going_down]],  # floor 2: person going down
+            [[], []], [[], []],
+        ]
+        elevator.step(2, waiting_people, timestep=0)  # UP - should NOT load person going down
+        assert len(elevator.carrying_people) == 0
+        assert len(waiting_people[2][1]) == 1
+
+    def test_down_does_not_load_passengers_going_up(self):
+        """When going DOWN, we only load people going down (floor[1]), not up (floor[0])."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=2)
+        person_going_up = Person(src_floor=2, target_floor=4, time_created=0)
+        waiting_people = [
+            [[], []], [[], []],
+            [[person_going_up], []],  # floor 2: person going up
+            [[], []], [[], []],
+        ]
+        elevator.step(0, waiting_people, timestep=0)  # DOWN - should NOT load person going up
+        assert len(elevator.carrying_people) == 0
+        assert len(waiting_people[2][0]) == 1
+
+    def test_get_state_current_floor_position(self):
+        """get_state current_floor one-hot reflects elevator position."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=2)
+        waiting_people = [[[], []] for _ in range(5)]
+        elevator.step(1, waiting_people, timestep=0)
+        state = elevator.get_state()
+        # First max_floor elements are current_floor one-hot
+        current_floor_one_hot = state[:5]
+        assert current_floor_one_hot[2] == 1
+        assert sum(current_floor_one_hot) == 1
+
+    def test_get_state_target_floors_when_carrying(self):
+        """get_state target_floors one-hot reflects passengers' destinations."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5, start_floor=1)
+        p1 = Person(src_floor=1, target_floor=2, time_created=0)
+        p2 = Person(src_floor=1, target_floor=4, time_created=0)
+        waiting_people = [[[], []], [[p1, p2], []], [[], []], [[], []], [[], []]]
+        elevator.step(2, waiting_people, timestep=0)  # UP to load
+        state = elevator.get_state()
+        target_one_hot = state[5:10]
+        assert target_one_hot[2] == 1
+        assert target_one_hot[4] == 1
+        assert sum(target_one_hot) == 2
+
+    def test_multiple_passengers_same_direction(self):
+        """Pick up 2 people going up from different floors, deliver both."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5)
+        p_floor2 = Person(src_floor=0, target_floor=2, time_created=0)
+        p_floor4 = Person(src_floor=1, target_floor=4, time_created=0)
+        waiting_people = [
+            [[p_floor2], []],
+            [[p_floor4], []],
+            [[], []], [[], []], [[], []],
+        ]
+        # Floor 0: load p_floor2, move to 1
+        elevator.step(2, waiting_people, timestep=0)
+        assert len(elevator.carrying_people) == 1
+        # Floor 1: load p_floor4, move to 2
+        elevator.step(2, waiting_people, timestep=1)
+        assert len(elevator.carrying_people) == 2
+        # Floor 2: unload p_floor2, move to 3
+        _, num_unloaded, _, _ = elevator.step(2, waiting_people, timestep=2)
+        assert num_unloaded == 1
+        assert len(elevator.carrying_people) == 1
+        assert elevator.carrying_people[0].target_floor == 4
+        # Floor 3: move to 4
+        elevator.step(2, waiting_people, timestep=3)
+        # Floor 4: unload p_floor4
+        _, num_unloaded, _, _ = elevator.step(1, waiting_people, timestep=4)
+        assert num_unloaded == 1
+        assert len(elevator.carrying_people) == 0
+
+    def test_up_then_down_full_trip(self):
+        """Elevator goes up with passenger, delivers, goes down with another passenger."""
+        np.random.seed(SEED)
+        elevator = Elevator(max_floor=5)
+        p_up = Person(src_floor=0, target_floor=4, time_created=0)
+        p_down = Person(src_floor=4, target_floor=0, time_created=0)
+        waiting_people = [
+            [[p_up], []], [[], []], [[], []], [[], []],
+            [[], [p_down]],  # floor 4 going down
+        ]
+        # Load at 0, go up to 4
+        elevator.step(2, waiting_people, timestep=0)  # 0->1
+        elevator.step(2, waiting_people, timestep=1)  # 1->2
+        elevator.step(2, waiting_people, timestep=2)  # 2->3
+        elevator.step(2, waiting_people, timestep=3)  # 3->4
+        _, n, _, _ = elevator.step(1, waiting_people, timestep=4)  # unload at 4
+        assert n == 1
+        # Now load person going down at floor 4
+        elevator.step(0, waiting_people, timestep=5)  # DOWN: load, 4->3
+        assert len(elevator.carrying_people) == 1
+        assert elevator.carrying_people[0].target_floor == 0
+        # Go down to 0 (3 more steps: 3->2->1->0)
+        for t in range(6, 9):
+            elevator.step(0, waiting_people, timestep=t)
+        _, n, _, _ = elevator.step(1, waiting_people, timestep=7)  # unload at 0
+        assert n == 1
+        assert elevator.current_floor == 0
+
 
 class TestElevatorWrapper:
     """Tests for the ElevatorWrapper class."""
