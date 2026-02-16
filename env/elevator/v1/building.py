@@ -4,10 +4,6 @@ import gymnasium as gym
 from elevator_v1 import ElevatorWrapper
  
 
-
-
-
-
 @dataclass
 class Person:
     src_floor : int
@@ -42,10 +38,9 @@ class Building:
         ]
         self.number_people_waiting = 0
     
-    
     def spawn_people(self,  timestep, p=0.01,):
     
-        if len(self.number_people_waiting) >= self.max_people:
+        if self.number_people_waiting >= self.max_people:
             return
 
         for floor in range(self.num_floors):
@@ -55,12 +50,15 @@ class Building:
                 target = np.random.randint(floor + 1, self.num_floors)
                 self.waiting_people[floor][0].append(Person(floor, target, timestep))
                 self.number_people_waiting += 1
-            
+            if self.number_people_waiting >= self.max_people:
+                break
             # DOWN spawn
             if floor > 0 and np.random.rand() < p:
                 target = np.random.randint(0, floor)
                 self.waiting_people[floor][1].append(Person(floor, target, timestep))
                 self.number_people_waiting += 1
+            if self.number_people_waiting >= self.max_people:
+                break
         # scan thru waiting people and update floor_states if there are people waiting
         for floor in range(self.num_floors):
             if len(self.waiting_people[floor][0]) > 0:
@@ -71,6 +69,9 @@ class Building:
                 self.people_on_each_floor[floor][1] = len(self.waiting_people[floor][1])
        
 
+
+    def get_waiting_people(self):
+        return self.waiting_people
 
     def get_building_state(self):
         return (

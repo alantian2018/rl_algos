@@ -28,16 +28,15 @@ class Elevator:
 
     def load_people(self, waiting_people, action):
         if action == ElevatorActions.UP:
-            
             self.carrying_people.extend(waiting_people[self.current_floor][0])
          
             # delete it from waiting_people
             waiting_people[self.current_floor][0] = []
-            
         elif action == ElevatorActions.DOWN:
             self.carrying_people.extend(waiting_people[self.current_floor][1])
-            # delete it from waiting_people
             waiting_people[self.current_floor][1] = []
+        elif action == ElevatorActions.IDLE:
+            pass
         else:
             raise ValueError(f"Invalid action: {action}")
 
@@ -71,14 +70,11 @@ class Elevator:
     def step(self, action, waiting_people, timestep):
         # subtract one from action since it is [0, 1, 2] -> [-1, 0, 1] -> [down, idle, up]
         action -= 1
+         
         assert action in [-1, 0, 1], "Invalid action"
+        action = ElevatorActions(action)
 
-        if action == ElevatorActions.IDLE:
-            self.last_action = 0
-        elif action == ElevatorActions.UP:
-            self.last_action = 1
-        elif action == ElevatorActions.DOWN:
-            self.last_action = -1
+        self.last_action = action.value
         
         # unload ppl here
         num_unloaded = self.unload_people()
@@ -99,7 +95,7 @@ class Elevator:
         elif action == ElevatorActions.DOWN and self.current_floor==0:
             did_invalid_action = True
         else:
-            self.current_floor += action
+            self.current_floor += action.value
 
         obs = self.get_state()
 
@@ -112,26 +108,35 @@ class Elevator:
 class ElevatorWrapper:
 # yes you can do this vectorized for concurrency but i think this is easier to understand and scale 
     def __init__(self, max_elevators, max_floor, start_floor = 0):
-        self.elevators = []
+        self.elevators : list[Elevator] = []
         for _ in range(max_elevators):
             self.elevators.append(Elevator(max_floor, start_floor))
 
-    def step(self, actions, waiting_people):
+    def step(self, actions, waiting_people, timestep):
         assert len(actions) == len(self.elevators), "Invalid number of actions"
-        num_unloaded = []
+        num_unloaded_list = []
         elevator_obs = []
         did_invalid_actions = []
-        elevator_waiting_times = []
+        elevator_waiting_times_list = []
         for c, action in enumerate(actions):
-            obs, num_unloaded, did_invalid_action, elevator_waiting_times = self.elevators[c].step(action, waiting_people)
+            obs, n_unloaded, did_invalid_action, e_waiting_times = self.elevators[c].step(action, waiting_people, timestep)
 
             elevator_obs.append(obs)
-            num_unloaded.append(num_unloaded)
+            num_unloaded_list.append(n_unloaded)
             did_invalid_actions.append(did_invalid_action)
-            elevator_waiting_times.append(elevator_waiting_times)
+            elevator_waiting_times_list.append(e_waiting_times)
 
-        reward = self.calculate_reward(num_unloaded, did_invalid_action, waiting_people, elevator_waiting_times)
-        return np.array(elevator_obs).flatten(), reward, sum(num_unloaded), {"did_invalid_actions": did_invalid_actions, "elevator_waiting_times": elevator_waiting_times}
+    
+        reward = self.calculate_reward(num_unloaded_list, any(did_invalid_actions), waiting_people, elevator_waiting_times_list)
+        return (
+                # obs
+                np.array(elevator_obs).flatten(),
+                # reward
+                reward,
+                # total num unloaded
+                sum(num_unloaded_list), 
+                {"did_invalid_actions": did_invalid_actions, 
+                  "elevator_waiting_times": elevator_waiting_times_list})
          
    
 
@@ -142,10 +147,12 @@ class ElevatorWrapper:
             elevator_obs.append(obs)
         return np.array(elevator_obs).flatten()
 
-    def calculate_reward(self, num_unloaded, did_invalid_action, waiting_people, elevator_waiting_times):
-        reward = num_unloaded - 10 if did_invalid_action else 0
+    def calculate_reward(self, num_unloaded, did_invalid_action, waiting_people, elevator_waiting_times):   
+        
+        reward = sum(num_unloaded) - 10 if did_invalid_action else 0
         # add timestep penalty
-        reward -= sum(elevator_waiting_times) * 0.01
+       
+        reward -= sum([time for times in elevator_waiting_times for time in times]) * 0.01
         for floor in waiting_people:
             for direction in floor:
                 reward -= len(direction) * 0.01
