@@ -1,21 +1,17 @@
 """
 Tests for Building and Elevator classes.
 Uses np.random.seed() for deterministic RNG across test runs.
+
+Run from repo root: python -m pytest env/elevator/v1/testing/ -v
 """
 
 import pytest
 import numpy as np
-
-# Import after setting path - run from repo root or add to path
 import sys
 from pathlib import Path
 
-# Add v1 directory to path for imports
-v1_dir = Path(__file__).parent
-sys.path.insert(0, str(v1_dir))
-
-from building import Building, Person
-from elevator_v1 import Elevator, ElevatorWrapper, ElevatorActions
+from src import Building, Person
+from src import Elevator, ElevatorWrapper
 
 SEED = 42
 
@@ -81,6 +77,82 @@ class TestBuilding:
         for t in range(100):
             building.spawn_people(timestep=t, p=1.0)
         assert building.number_people_waiting <= 2
+
+    def test_get_building_state_structure(self):
+        """State observation has correct shape and dtypes."""
+        np.random.seed(SEED)
+        building = Building(num_floors=5)
+        floor_states, people_on_each_floor = building.get_building_state()
+        assert floor_states.shape == (5, 2)
+        assert people_on_each_floor.shape == (5, 2)
+        assert floor_states.dtype.kind == "b"  # boolean
+        assert people_on_each_floor.dtype.kind in ("i", "u")  # int
+
+    def test_get_building_state_floor_states_semantics(self):
+        """floor_states: column 0 = up pressed, column 1 = down pressed."""
+        np.random.seed(SEED)
+        building = Building(num_floors=5)
+        # Manually add people: floor 1 going up, floor 3 going down
+        building.waiting_people[1][0].append(Person(1, 4, 0))
+        building.waiting_people[3][1].append(Person(3, 0, 0))
+        floor_states, people_on_each_floor = building.get_building_state()
+        # Floor 1: up pressed
+        assert floor_states[1][0] == True  # use == for np.bool_ compatibility
+        assert floor_states[1][1] == False
+        # Floor 3: down pressed
+        assert floor_states[3][0] == False
+        assert floor_states[3][1] == True
+        # Other floors: neither
+        assert floor_states[0][0] == False and floor_states[0][1] == False
+        assert floor_states[2][0] == False and floor_states[2][1] == False
+        assert floor_states[4][0] == False and floor_states[4][1] == False
+
+    def test_get_building_state_people_counts(self):
+        """people_on_each_floor matches actual waiting counts."""
+        np.random.seed(SEED)
+        building = Building(num_floors=5)
+        building.waiting_people[0][0].extend(
+            [Person(0, 2, 0), Person(0, 4, 0)]
+        )  # 2 going up
+        building.waiting_people[2][1].append(Person(2, 0, 0))  # 1 going down
+        floor_states, people_on_each_floor = building.get_building_state()
+        assert people_on_each_floor[0][0] == 2
+        assert people_on_each_floor[0][1] == 0
+        assert people_on_each_floor[2][0] == 0
+        assert people_on_each_floor[2][1] == 1
+
+    def test_get_building_state_reflects_elevator_pickup(self):
+        """State updates when elevator removes people from waiting_people (simulated pickup)."""
+        np.random.seed(SEED)
+        building = Building(num_floors=5)
+        building.waiting_people[1][0].append(Person(1, 3, 0))
+        floor_states_before, _ = building.get_building_state()
+        assert floor_states_before[1][0] == True
+        # Simulate elevator picking up everyone going up from floor 1
+        building.waiting_people[1][0].clear()
+        floor_states_after, people_after = building.get_building_state()
+        assert floor_states_after[1][0] == False
+        assert people_after[1][0] == 0
+
+    def test_get_building_state_multi_floor_observation(self):
+        """Observation correctly encodes multiple floors with different directions."""
+        np.random.seed(SEED)
+        building = Building(num_floors=4)
+        building.waiting_people[0][0].append(Person(0, 3, 0))  # floor 0: up
+        building.waiting_people[1][0].append(Person(1, 3, 0))  # floor 1: up
+        building.waiting_people[1][1].append(Person(1, 0, 0))  # floor 1: also down
+        building.waiting_people[3][1].append(Person(3, 0, 0))  # floor 3: down
+        floor_states, people = building.get_building_state()
+        expected_floor_states = np.array(
+            [
+                [True, False],  # floor 0: up
+                [True, True],  # floor 1: up and down
+                [False, False],  # floor 2: none
+                [False, True],  # floor 3: down
+            ]
+        )
+        np.testing.assert_array_equal(floor_states, expected_floor_states)
+        assert people[1][0] == 1 and people[1][1] == 1
 
 
 class TestPerson:

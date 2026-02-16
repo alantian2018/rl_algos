@@ -4,3 +4,4 @@
 wandb/
 sbatch/
 checkpoints/
+pytest_cache/

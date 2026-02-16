@@ -57,7 +57,6 @@ class Elevator:
         return num_unloaded
 
     def reset(self):
-
         self.current_floor = 0
         self.last_action = 0
         self.carrying_people = []
