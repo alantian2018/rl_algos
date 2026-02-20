@@ -7,6 +7,7 @@ from .ppo import (
     Critic,
     ImageActor,
     ImageCritic,
+    gae
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "Critic",
     "ImageActor",
     "ImageCritic",
+    "gae",
 ]

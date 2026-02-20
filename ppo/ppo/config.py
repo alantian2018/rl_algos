@@ -8,6 +8,7 @@ from datetime import datetime
 class PPOConfig(GlobalConfig):
     obs_dim: Optional[int | tuple] = None
     act_dim: Optional[int] = None
+    act_shape: Optional[int] = 1
     actor_hidden_size: int = 128
     critic_hidden_size: int = 128
 

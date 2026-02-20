@@ -33,6 +33,7 @@ class PPO(BaseAlgorithm):
                 config.obs_dim * self.config.frame_stack,
                 config.act_dim,
                 config.actor_hidden_size,
+                act_shape = config.act_shape
             )
         else:
             assert actor is not None
@@ -57,6 +58,7 @@ class PPO(BaseAlgorithm):
         self.entropy_coefficient = config.entropy_coefficient
 
         self.minibatch_size = config.minibatch_size
+        self.act_shape = config.act_shape
 
         self.frame_stack = FrameStack(
             frames=self.config.frame_stack, raw_obs_dim=self.raw_obs_dim
@@ -86,7 +88,10 @@ class PPO(BaseAlgorithm):
         with torch.no_grad():
 
             obs = torch.zeros((self.T,) + self.obs_dim, device=self.config.device)
-            action = torch.zeros(self.T, device=self.config.device)
+            if self.act_shape > 1:
+                action = torch.zeros((self.T, self.act_shape), device=self.config.device)
+            else:
+                action = torch.zeros(self.T, device=self.config.device)
             reward = torch.zeros(self.T, device=self.config.device)
             done = torch.zeros(self.T, device=self.config.device)
             log_probs = torch.zeros(self.T, device=self.config.device)
@@ -98,6 +103,8 @@ class PPO(BaseAlgorithm):
                 actions = distribution.sample()
 
                 log_probs_ = distribution.log_prob(actions)
+                if self.act_shape > 1:
+                    log_probs_ = log_probs_.sum(-1)
 
                 next_obs, rewards, terminated, truncated, _ = self.env.step(
                     actions.squeeze(0).cpu().numpy()
@@ -134,6 +141,8 @@ class PPO(BaseAlgorithm):
         """Get the log probability and entropy of the actions, needed to check distributional shift"""
         distribution = self.actor(obs)
         log_probs = distribution.log_prob(actions)
+        if self.act_shape > 1:
+            log_probs = log_probs.sum(-1)
         entropy = distribution.entropy()
         return log_probs, entropy
 

@@ -6,21 +6,25 @@ from torch.distributions import Categorical
 class Actor(Module):
     """Actor network -> policy pi(a|s)"""
 
-    def __init__(self, obs_dim: int, act_dim: int, hidden_size: int):
+    def __init__(self, obs_dim: int, act_dim: int, hidden_size: int, act_shape: int = 1):
         super().__init__()
         self.net = Sequential(
             Linear(obs_dim, hidden_size),
             ReLU(),
             Linear(hidden_size, hidden_size),
             ReLU(),
-            Linear(hidden_size, act_dim),
+            Linear(hidden_size, act_shape * act_dim),
         )
+        self.act_shape = act_shape
+        self.act_dim = act_dim
 
     def forward(self, obs: torch.Tensor) -> Categorical:
         if obs.dim == 1:
             obs = obs.unsqueeze(0)
-
-        return Categorical(logits=self.net(obs))
+        logits = self.net(obs)
+        if self.act_shape > 1:
+            logits = logits.view(*logits.shape[:-1], self.act_shape, self.act_dim)
+        return Categorical(logits=logits)
 
 
 class Critic(Module):
@@ -45,7 +49,7 @@ class SnakeActor(Module):
     """CNN Actor network -> policy pi(a|s) for image observations."""
 
     def __init__(
-        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int
+        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int, act_shape: int = 1
     ):
         super().__init__()
         self.conv = Sequential(
@@ -59,8 +63,10 @@ class SnakeActor(Module):
             Flatten(),
             Linear(hidden_size * height * width, hidden_size),
             ReLU(),
-            Linear(hidden_size, act_dim),
+            Linear(hidden_size, act_dim * act_shape),
         )
+        self.act_shape = act_shape
+        self.act_dim = act_dim
 
     def forward(self, obs: torch.Tensor) -> Categorical:
         # obs: (batch, H, W, C) -> (batch, C, H, W)
@@ -69,6 +75,8 @@ class SnakeActor(Module):
         obs = obs.permute(0, 3, 1, 2)  # HWC -> CHW
         x = self.conv(obs)
         logits = self.fc(x)
+        if self.act_shape > 1:
+            logits = logits.view(*logits.shape[:-1], self.act_shape, self.act_dim)
         return Categorical(logits=logits)
 
 
@@ -103,7 +111,7 @@ class ImageActor(Module):
     """Downsampling CNN tailored for 96x96x3 CarRacing observations."""
 
     def __init__(
-        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int
+        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int, act_shape: int = 1
     ):
         super().__init__()
         # aggressive downsampling: kernel/stride choices inspired by Atari-style nets
@@ -132,8 +140,10 @@ class ImageActor(Module):
             Flatten(),
             Linear(flattened, hidden_size),
             ReLU(),
-            Linear(hidden_size, act_dim),
+            Linear(hidden_size, act_dim * act_shape),
         )
+        self.act_shape = act_shape
+        self.act_dim = act_dim
 
     def forward(self, obs: torch.Tensor) -> Categorical:
         if obs.dim() == 3:
@@ -141,6 +151,8 @@ class ImageActor(Module):
         obs = obs.permute(0, 3, 1, 2)  # HWC -> CHW
         x = self.conv(obs)
         logits = self.fc(x)
+        if self.act_shape > 1:
+            logits = logits.view(*logits.shape[:-1], self.act_shape, self.act_dim)
         return Categorical(logits=logits)
 
 
