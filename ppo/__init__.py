@@ -7,7 +7,7 @@ from .ppo import (
     Critic,
     ImageActor,
     ImageCritic,
-    gae
+    gae,
 )
 
 __all__ = [

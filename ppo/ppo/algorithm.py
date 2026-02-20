@@ -33,7 +33,7 @@ class PPO(BaseAlgorithm):
                 config.obs_dim * self.config.frame_stack,
                 config.act_dim,
                 config.actor_hidden_size,
-                act_shape = config.act_shape
+                act_shape=config.act_shape,
             )
         else:
             assert actor is not None
@@ -89,7 +89,9 @@ class PPO(BaseAlgorithm):
 
             obs = torch.zeros((self.T,) + self.obs_dim, device=self.config.device)
             if self.act_shape > 1:
-                action = torch.zeros((self.T, self.act_shape), device=self.config.device)
+                action = torch.zeros(
+                    (self.T, self.act_shape), device=self.config.device
+                )
             else:
                 action = torch.zeros(self.T, device=self.config.device)
             reward = torch.zeros(self.T, device=self.config.device)

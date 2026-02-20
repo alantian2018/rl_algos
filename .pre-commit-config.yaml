@@ -3,3 +3,4 @@ repos:
     rev: 26.1.0   # use the Black version you want
     hooks:
       - id: black
+        stages: [commit] 

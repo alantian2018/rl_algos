@@ -6,7 +6,9 @@ from torch.distributions import Categorical
 class Actor(Module):
     """Actor network -> policy pi(a|s)"""
 
-    def __init__(self, obs_dim: int, act_dim: int, hidden_size: int, act_shape: int = 1):
+    def __init__(
+        self, obs_dim: int, act_dim: int, hidden_size: int, act_shape: int = 1
+    ):
         super().__init__()
         self.net = Sequential(
             Linear(obs_dim, hidden_size),
@@ -49,7 +51,13 @@ class SnakeActor(Module):
     """CNN Actor network -> policy pi(a|s) for image observations."""
 
     def __init__(
-        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int, act_shape: int = 1
+        self,
+        in_channels: int,
+        height: int,
+        width: int,
+        act_dim: int,
+        hidden_size: int,
+        act_shape: int = 1,
     ):
         super().__init__()
         self.conv = Sequential(
@@ -111,7 +119,13 @@ class ImageActor(Module):
     """Downsampling CNN tailored for 96x96x3 CarRacing observations."""
 
     def __init__(
-        self, in_channels: int, height: int, width: int, act_dim: int, hidden_size: int, act_shape: int = 1
+        self,
+        in_channels: int,
+        height: int,
+        width: int,
+        act_dim: int,
+        hidden_size: int,
+        act_shape: int = 1,
     ):
         super().__init__()
         # aggressive downsampling: kernel/stride choices inspired by Atari-style nets

@@ -7,10 +7,10 @@ from dataclasses import dataclass
 
 from ppo import PPO, PPOConfig, Actor, Critic, gae
 
-
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SingleDiscreteConfig(PPOConfig):
@@ -95,6 +95,7 @@ def make_multi_cartpole(render_mode=None):
 # 1. Network shape tests
 # ---------------------------------------------------------------------------
 
+
 class TestActorShapes:
     def test_single_discrete_unbatched(self):
         actor = Actor(obs_dim=4, act_dim=2, hidden_size=16, act_shape=1)
@@ -162,6 +163,7 @@ class TestCriticShapes:
 # 2. GAE tests
 # ---------------------------------------------------------------------------
 
+
 class TestGAE:
     def test_single_step(self):
         """With T=1, GAE = delta = r + gamma*0 - V(s) (terminal)."""
@@ -218,6 +220,7 @@ class TestGAE:
 # ---------------------------------------------------------------------------
 # 3. PPO loss function tests
 # ---------------------------------------------------------------------------
+
 
 class TestPPOLosses:
     """Test actor and critic losses in isolation (no env needed)."""
@@ -281,6 +284,7 @@ class TestPPOLosses:
 # 4. Log-prob / entropy shape tests through PPO internals
 # ---------------------------------------------------------------------------
 
+
 class TestLogProbShapes:
     """Verify that _get_log_prob_and_entropy returns correct shapes."""
 
@@ -311,6 +315,7 @@ class TestLogProbShapes:
 # ---------------------------------------------------------------------------
 # 5. Integration: run a few gradient steps without crashing
 # ---------------------------------------------------------------------------
+
 
 class TestIntegration:
     def test_single_discrete_training_runs(self):
