@@ -8,6 +8,7 @@ import numpy as np
 from functools import partial
 from env import ElevatorEnv_v1
 
+
 # PLZ DO NOT FORGET TYPE HINTS
 @dataclass
 class ElevatorConfig(PPOConfig):
@@ -34,6 +35,7 @@ class ElevatorConfig(PPOConfig):
 
     save_freq: int = 5000
 
+
 def make_elevator_env(
     num_elevators,
     num_floors,
@@ -51,7 +53,9 @@ def make_elevator_env(
 def main(config: ElevatorConfig):
 
     config.wandb_project = f"ppo-elevator-{config.num_elevators}-{config.num_floors}"
-    config.save_dir = f"ppo/checkpoints/elevator/{config.num_elevators}-{config.num_floors}"
+    config.save_dir = (
+        f"ppo/checkpoints/elevator/{config.num_elevators}-{config.num_floors}"
+    )
     config.act_shape = config.num_elevators
 
     env = make_elevator_env(
