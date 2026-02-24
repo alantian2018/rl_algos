@@ -98,6 +98,9 @@ class PPO(BaseAlgorithm):
             done = torch.zeros(self.T, device=self.config.device)
             log_probs = torch.zeros(self.T, device=self.config.device)
 
+            log_keys = self.config.log_keys or []
+            env_metrics = {k: [] for k in log_keys}
+
             episode_returns = []
             for t in range(self.T):
                 cur_frame = self.frame_stack.get_frames()
@@ -108,9 +111,13 @@ class PPO(BaseAlgorithm):
                 if self.act_shape > 1:
                     log_probs_ = log_probs_.sum(-1)
               
-                next_obs, rewards, terminated, truncated, _ = self.env.step(
+                next_obs, rewards, terminated, truncated, info = self.env.step(
                     actions.squeeze(0).cpu().numpy()
                 )
+
+                for k in log_keys:
+                    if k in info:
+                        env_metrics[k].append(info[k])
 
                 obs[t] = cur_frame
                 action[t] = actions
@@ -137,7 +144,7 @@ class PPO(BaseAlgorithm):
                     )
                     self.frame_stack.add_to_frame_stack(data=self.cur_obs)
 
-            return obs, action, reward, done, log_probs.detach(), episode_returns
+            return obs, action, reward, done, log_probs.detach(), episode_returns, env_metrics
 
     def _get_log_prob_and_entropy(self, obs, actions):
         """Get the log probability and entropy of the actions, needed to check distributional shift"""
@@ -200,12 +207,13 @@ class PPO(BaseAlgorithm):
             # Record video if needed
             self.logger.maybe_record_video(self.actor, t, self.config.device)
 
-            obs, actions, reward, done, old_log_probs, episode_returns = (
+            obs, actions, reward, done, old_log_probs, episode_returns, env_metrics = (
                 self._sample_batch()
             )
 
             # Log episode returns
             self.logger.log_rollout(episode_returns, step=t)
+            self.logger.log_env_metrics(env_metrics, step=t)
 
             """use values as a proxy for Advantage function. We glue this down and treat it as an oracle."""
             value = self.critic(obs).squeeze(-1).detach()

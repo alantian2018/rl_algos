@@ -19,6 +19,7 @@ class GlobalConfig:
     wandb_project: Optional[str] = None
     wandb_run_name: Optional[str] = None
     video_log_freq: Optional[int] = None
+    log_keys: Optional[list[str]] = None
 
     # Checkpointing
     save_freq: Optional[int] = None  # Save checkpoint every N steps (None = disabled)

@@ -41,7 +41,7 @@ class ElevatorEnv(gym.Env):
         # 2.
         timestep = self.current_step
         waiting_people = self.building.get_waiting_people()
-        elevator_obs, reward, num_unloaded, _ = self.elevator_wrapper.step(
+        elevator_obs, reward, num_unloaded, info = self.elevator_wrapper.step(
             actions, waiting_people, timestep
         )
         # if unloaded people remove it
@@ -54,7 +54,7 @@ class ElevatorEnv(gym.Env):
         # get building obs and concat with elevator obs
         floor_states, people_on_each_floor = self.building.get_building_state()
         obs = np.concatenate([floor_states.flatten(), elevator_obs])
-        return obs, reward, done, False, {}
+        return obs, reward, done, False, info
 
     def reset(self):
         floor_state, people_on_each_floor = self.building.reset()

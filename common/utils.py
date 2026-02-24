@@ -56,6 +56,18 @@ class Logger:
                 step=step,
             )
 
+    def log_env_metrics(self, env_metrics: Dict[str, list], step: int):
+        """Log environment-specific metrics (keyed by config.log_keys).
+        Each value is a list of per-step observations; we report the mean."""
+        if not self.use_wandb:
+            return
+        dict_to_log = {}
+        for key, values in env_metrics.items():
+            if values:
+                dict_to_log[f"env/{key}"] = sum(values) / len(values)
+        if dict_to_log:
+            self.log(dict_to_log, step=step)
+
     def log_training(self, training_info: dict, step: int):
         """Log training metrics."""
 

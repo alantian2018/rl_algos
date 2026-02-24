@@ -136,20 +136,17 @@ class ElevatorWrapper:
             waiting_people,
             elevator_waiting_times_list,
         )
+        info = {"did_invalid_actions": did_invalid_actions}
+        if elevator_waiting_times_list:
+            info["mean_elevator_waiting_time"] = sum(elevator_waiting_times_list) / len(elevator_waiting_times_list)
+            info["max_elevator_waiting_time"] = max(elevator_waiting_times_list)
+            info["min_elevator_waiting_time"] = min(elevator_waiting_times_list)
+
         return (
-            # obs
             np.array(elevator_obs).flatten(),
-            # reward
             reward,
-            # total num unloaded
             sum(num_unloaded_list),
-            {
-                "did_invalid_actions": did_invalid_actions,
-                "elevator_waiting_times": elevator_waiting_times_list,
-                "mean_elevator_waiting_time": sum(elevator_waiting_times_list) / len(elevator_waiting_times_list),
-                "max_elevator_waiting_time": max(elevator_waiting_times_list),
-                "min_elevator_waiting_time": min(elevator_waiting_times_list),
-            },
+            info,
         )
 
     def reset(self):
@@ -167,7 +164,7 @@ class ElevatorWrapper:
         # add timestep penalty
 
         reward -= (
-            sum([time for times in elevator_waiting_times for time in times]) * 0.01
+            sum(elevator_waiting_times) * 0.01
         )
         for floor in waiting_people:
             for direction in floor:
