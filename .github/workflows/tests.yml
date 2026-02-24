@@ -25,4 +25,4 @@ jobs:
        # TODO run all tests once elevator tests are written
         run: |
           python -m pytest ppo/tests/test_ppo.py -v
-          python -m pytest env/elevator/v1/testing/test_building_elevator.py -v
+          python -m pytest env/elevator/v1/testing -v

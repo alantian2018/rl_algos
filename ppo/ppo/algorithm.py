@@ -107,7 +107,7 @@ class PPO(BaseAlgorithm):
                 log_probs_ = distribution.log_prob(actions)
                 if self.act_shape > 1:
                     log_probs_ = log_probs_.sum(-1)
-
+              
                 next_obs, rewards, terminated, truncated, _ = self.env.step(
                     actions.squeeze(0).cpu().numpy()
                 )

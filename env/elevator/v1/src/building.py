@@ -67,6 +67,10 @@ class Building:
     def get_waiting_people(self):
         return self.waiting_people
 
+    def remove_waiting_people(self, num_unloaded):
+        self.number_people_waiting -= num_unloaded
+        assert self.number_people_waiting >= 0
+
     def get_building_state(self):
         """Return (floor_states, people_on_each_floor). Always reflects current waiting_people."""
         self._refresh_state_from_waiting()

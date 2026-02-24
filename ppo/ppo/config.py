@@ -23,6 +23,7 @@ class PPOConfig(GlobalConfig):
     entropy_coefficient: float = 0.01
     entropy_decay: bool = True
     entropy_decay_steps: Optional[int] = None
+    log_keys: Optional[list[str]] = None
 
     # prefer ppo-specific checkpoint folder when save_dir is not provided
     save_dir: Optional[str] = None

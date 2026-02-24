@@ -114,6 +114,7 @@ class ElevatorWrapper:
             self.elevators.append(Elevator(max_floor, start_floor))
 
     def step(self, actions, waiting_people, timestep):
+        
         assert len(actions) == len(self.elevators), "Invalid number of actions"
         num_unloaded_list = []
         elevator_obs = []
@@ -127,7 +128,7 @@ class ElevatorWrapper:
             elevator_obs.append(obs)
             num_unloaded_list.append(n_unloaded)
             did_invalid_actions.append(did_invalid_action)
-            elevator_waiting_times_list.append(e_waiting_times)
+            elevator_waiting_times_list.extend(e_waiting_times)
 
         reward = self.calculate_reward(
             num_unloaded_list,
@@ -145,6 +146,9 @@ class ElevatorWrapper:
             {
                 "did_invalid_actions": did_invalid_actions,
                 "elevator_waiting_times": elevator_waiting_times_list,
+                "mean_elevator_waiting_time": sum(elevator_waiting_times_list) / len(elevator_waiting_times_list),
+                "max_elevator_waiting_time": max(elevator_waiting_times_list),
+                "min_elevator_waiting_time": min(elevator_waiting_times_list),
             },
         )
 
@@ -168,6 +172,6 @@ class ElevatorWrapper:
         for floor in waiting_people:
             for direction in floor:
                 reward -= len(direction) * 0.01
-        return reward
+        return reward 
         # elevator reward function
         # add the people waiting penalty
