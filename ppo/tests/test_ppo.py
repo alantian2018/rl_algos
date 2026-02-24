@@ -334,7 +334,7 @@ class TestIntegration:
         config = SingleDiscreteConfig()
         env = make_cartpole()
         ppo = PPO(config, env, actor=None, critic=None, make_env=make_cartpole)
-        obs, actions, reward, done, log_probs, _, _= ppo._sample_batch()
+        obs, actions, reward, done, log_probs, _, _ = ppo._sample_batch()
         T = config.T
         assert obs.shape == (T, config.obs_dim)
         assert actions.shape == (T,)
