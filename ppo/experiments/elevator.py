@@ -45,7 +45,7 @@ class ElevatorConfig(PPOConfig):
 
 @draccus.wrap()
 def main(config: ElevatorConfig):
-    
+
     config.wandb_project = f"ppo-elevator-{config.num_elevators}"
     config.save_dir = f"ppo/checkpoints/elevator/{config.num_elevators}"
     config.act_shape = config.num_elevators
@@ -62,7 +62,7 @@ def main(config: ElevatorConfig):
     obs_dim = obs.shape[0]
     actor = Actor(
         obs_dim * config.frame_stack,
-        act_dim = 3,
+        act_dim=3,
         hidden_size=config.actor_hidden_size,
         act_shape=config.num_elevators,
     )
@@ -74,7 +74,7 @@ def main(config: ElevatorConfig):
         config.num_floors,
         config.max_steps,
         config.max_people,
-        config.spawn_rate,        
+        config.spawn_rate,
     )
     ppo = PPO(config, env, actor, critic, make_env=make_env_fn)
     ppo.run_batch(total_gradient_steps=config.total_gradient_steps)

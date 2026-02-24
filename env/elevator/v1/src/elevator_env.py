@@ -31,7 +31,7 @@ class ElevatorEnv(gym.Env):
     def step(self, actions):
         if actions.ndim == 0:
             actions = np.array([actions])
-       
+
         # num people waiting -= num_loaded eventually, do not forget this plz or
         # nobody new will spawn
         # loop should be

@@ -114,7 +114,7 @@ class ElevatorWrapper:
             self.elevators.append(Elevator(max_floor, start_floor))
 
     def step(self, actions, waiting_people, timestep):
-        
+
         assert len(actions) == len(self.elevators), "Invalid number of actions"
         num_unloaded_list = []
         elevator_obs = []
@@ -169,6 +169,6 @@ class ElevatorWrapper:
         for floor in waiting_people:
             for direction in floor:
                 reward -= len(direction) * 0.01
-        return reward 
+        return reward
         # elevator reward function
         # add the people waiting penalty
