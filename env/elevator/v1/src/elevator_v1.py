@@ -138,7 +138,9 @@ class ElevatorWrapper:
         )
         info = {"did_invalid_actions": did_invalid_actions}
         if elevator_waiting_times_list:
-            info["mean_elevator_waiting_time"] = sum(elevator_waiting_times_list) / len(elevator_waiting_times_list)
+            info["mean_elevator_waiting_time"] = sum(elevator_waiting_times_list) / len(
+                elevator_waiting_times_list
+            )
             info["max_elevator_waiting_time"] = max(elevator_waiting_times_list)
             info["min_elevator_waiting_time"] = min(elevator_waiting_times_list)
 
@@ -163,9 +165,7 @@ class ElevatorWrapper:
         reward -= 10 if did_invalid_action else 0
         # add timestep penalty
 
-        reward -= (
-            sum(elevator_waiting_times) * 0.01
-        )
+        reward -= sum(elevator_waiting_times) * 0.01
         for floor in waiting_people:
             for direction in floor:
                 reward -= len(direction) * 0.01

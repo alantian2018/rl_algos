@@ -26,7 +26,13 @@ def make_elevator_env(
 @dataclass
 class ElevatorConfig(PPOConfig):
     exp_name: str = "elevator"
-    log_keys: list[str] = field(default_factory=lambda: ["mean_elevator_waiting_time", "max_elevator_waiting_time", "min_elevator_waiting_time"])
+    log_keys: list[str] = field(
+        default_factory=lambda: [
+            "mean_elevator_waiting_time",
+            "max_elevator_waiting_time",
+            "min_elevator_waiting_time",
+        ]
+    )
     num_elevators: int = 2
     num_floors: int = 10
     max_steps: int = 300

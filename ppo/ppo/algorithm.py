@@ -110,7 +110,7 @@ class PPO(BaseAlgorithm):
                 log_probs_ = distribution.log_prob(actions)
                 if self.act_shape > 1:
                     log_probs_ = log_probs_.sum(-1)
-              
+
                 next_obs, rewards, terminated, truncated, info = self.env.step(
                     actions.squeeze(0).cpu().numpy()
                 )
@@ -144,7 +144,15 @@ class PPO(BaseAlgorithm):
                     )
                     self.frame_stack.add_to_frame_stack(data=self.cur_obs)
 
-            return obs, action, reward, done, log_probs.detach(), episode_returns, env_metrics
+            return (
+                obs,
+                action,
+                reward,
+                done,
+                log_probs.detach(),
+                episode_returns,
+                env_metrics,
+            )
 
     def _get_log_prob_and_entropy(self, obs, actions):
         """Get the log probability and entropy of the actions, needed to check distributional shift"""
