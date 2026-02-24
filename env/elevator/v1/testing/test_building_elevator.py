@@ -477,8 +477,51 @@ class TestElevatorWrapper:
 
         assert obs.shape == (2 * (5 + 5 + 3),)
         assert "did_invalid_actions" in info
-        assert "elevator_waiting_times" in info
         assert total_unloaded == 0
+
+    def test_info_no_passengers(self):
+        """With no passengers, wait time stats should be absent from info."""
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        waiting_people = [[[], []] for _ in range(5)]
+        _, _, _, info = wrapper.step([1], waiting_people, timestep=0)
+        assert "did_invalid_actions" in info
+        assert "mean_elevator_waiting_time" not in info
+        assert "max_elevator_waiting_time" not in info
+        assert "min_elevator_waiting_time" not in info
+
+    def test_info_with_passengers(self):
+        """With passengers loaded, wait time stats should appear in info."""
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        p = Person(0, 3, 0)
+        waiting = [[[p], []], [[], []], [[], []], [[], []], [[], []]]
+        wrapper.step([2], waiting, timestep=0)  # load at 0, move to 1
+        empty_waiting = [[[], []] for _ in range(5)]
+        _, _, _, info = wrapper.step([2], empty_waiting, timestep=5)  # move to 2
+        assert "mean_elevator_waiting_time" in info
+        assert "max_elevator_waiting_time" in info
+        assert "min_elevator_waiting_time" in info
+        assert info["mean_elevator_waiting_time"] == 5
+        assert info["max_elevator_waiting_time"] == 5
+        assert info["min_elevator_waiting_time"] == 5
+
+    def test_info_multiple_passengers_different_wait_times(self):
+        """Wait time stats should reflect all passengers across elevators."""
+        wrapper = ElevatorWrapper(max_elevators=1, max_floor=5)
+        wrapper.reset()
+        p1 = Person(0, 3, 0)
+        p2 = Person(0, 4, 2)
+        waiting_t0 = [[[p1], []], [[], []], [[], []], [[], []], [[], []]]
+        wrapper.step([2], waiting_t0, timestep=0)  # load p1 at 0, move to 1
+        waiting_t1 = [[], [[p2], []], [[], []], [[], []], [[], []]]
+        wrapper.step([2], waiting_t1, timestep=2)  # load p2 at 1, move to 2
+        empty_waiting = [[[], []] for _ in range(5)]
+        _, _, _, info = wrapper.step([2], empty_waiting, timestep=6)
+        # p1 waited 6-0=6, p2 waited 6-2=4
+        assert info["mean_elevator_waiting_time"] == pytest.approx(5.0)
+        assert info["max_elevator_waiting_time"] == 6
+        assert info["min_elevator_waiting_time"] == 4
 
     def test_step_deterministic(self):
         np.random.seed(SEED)

@@ -29,6 +29,7 @@ class ElevatorEnv(gym.Env):
         self.reset()
 
     def step(self, actions):
+        actions = np.asarray(actions)
         if actions.ndim == 0:
             actions = np.array([actions])
 
