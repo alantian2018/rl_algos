@@ -8,6 +8,31 @@ import numpy as np
 from functools import partial
 from env import ElevatorEnv_v1
 
+# PLZ DO NOT FORGET TYPE HINTS
+@dataclass
+class ElevatorConfig(PPOConfig):
+    exp_name: str = "elevator"
+    log_keys: list[str] = field(
+        default_factory=lambda: [
+            "mean_elevator_waiting_time",
+            "max_elevator_waiting_time",
+            "min_elevator_waiting_time",
+        ]
+    )
+    num_elevators: int = 4
+    num_floors: int = 32
+    max_steps: int = 300
+    max_people: int = 100
+    spawn_rate: float = 0.02
+
+    actor_hidden_size: int = 128
+    critic_hidden_size: int = 128
+    frame_stack: int = 4
+    # Training
+    total_gradient_steps: int = 50_000
+    video_log_freq: int = 5000
+
+    save_freq: int = 5000
 
 def make_elevator_env(
     num_elevators,
@@ -22,38 +47,11 @@ def make_elevator_env(
     )
 
 
-# PLZ DO NOT FORGET TYPE HINTS
-@dataclass
-class ElevatorConfig(PPOConfig):
-    exp_name: str = "elevator"
-    log_keys: list[str] = field(
-        default_factory=lambda: [
-            "mean_elevator_waiting_time",
-            "max_elevator_waiting_time",
-            "min_elevator_waiting_time",
-        ]
-    )
-    num_elevators: int = 2
-    num_floors: int = 10
-    max_steps: int = 300
-    max_people: int = 100
-    spawn_rate: float = 0.02
-
-    actor_hidden_size: int = 64
-    critic_hidden_size: int = 64
-    frame_stack: int = 4
-    # Training
-    total_gradient_steps: int = 50_000
-    video_log_freq: int = 5000
-
-    save_freq: int = 5000
-
-
 @draccus.wrap()
 def main(config: ElevatorConfig):
 
-    config.wandb_project = f"ppo-elevator-{config.num_elevators}"
-    config.save_dir = f"ppo/checkpoints/elevator/{config.num_elevators}"
+    config.wandb_project = f"ppo-elevator-{config.num_elevators}-{config.num_floors}"
+    config.save_dir = f"ppo/checkpoints/elevator/{config.num_elevators}-{config.num_floors}"
     config.act_shape = config.num_elevators
 
     env = make_elevator_env(
