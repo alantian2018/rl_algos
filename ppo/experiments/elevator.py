@@ -28,7 +28,6 @@ class ElevatorConfig(PPOConfig):
     spawn_rate: float = 0.02
     entropy_coefficient: float = 0.01
 
-
     actor_hidden_size: int = 100
     critic_hidden_size: int = 100
     frame_stack: int = 4

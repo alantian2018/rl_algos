@@ -42,8 +42,8 @@ class ElevatorEnv(gym.Env):
         # 2.
         timestep = self.current_step
         waiting_people = self.building.get_waiting_people()
-        elevator_obs, reward, num_unloaded,  info = (
-            self.elevator_wrapper.step(actions, waiting_people, timestep)
+        elevator_obs, reward, num_unloaded, info = self.elevator_wrapper.step(
+            actions, waiting_people, timestep
         )
         # if unloaded people remove it
         self.building.remove_waiting_people(num_unloaded)

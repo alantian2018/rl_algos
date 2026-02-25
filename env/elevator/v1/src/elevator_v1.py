@@ -133,9 +133,7 @@ class ElevatorWrapper:
             did_invalid_actions.append(did_invalid_action)
             elevator_waiting_times_list.extend(e_waiting_times)
 
-        num_in_elevators = sum(
-            len(e.carrying_people) for e in self.elevators
-        )
+        num_in_elevators = sum(len(e.carrying_people) for e in self.elevators)
         reward = self.calculate_reward(
             num_unloaded_list,
             did_invalid_actions,
@@ -170,7 +168,7 @@ class ElevatorWrapper:
     ):
         reward = sum(num_unloaded)
         percentage_invalid_actions = sum(did_invalid_action) / len(did_invalid_action)
-       # reward -= ( 10 * percentage_invalid_actions )
+        # reward -= ( 10 * percentage_invalid_actions )
         # add timestep penalty
 
         reward -= num_in_elevators * 0.01
