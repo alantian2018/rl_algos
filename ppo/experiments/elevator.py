@@ -32,7 +32,8 @@ class ElevatorConfig(PPOConfig):
     total_gradient_steps: int = 50_000
     video_log_freq: int = 5000
 
-    save_freq: int = 5000
+    save_freq: int = 20_000
+    path_to_checkpoint: str = "ppo/checkpoints/elevator/4-32/20260224_180224/checkpoint_50000.pt"
 
 def make_elevator_env(
     num_elevators,
@@ -64,6 +65,7 @@ def main(config: ElevatorConfig):
 
     obs, _ = env.reset()
     obs_dim = obs.shape[0]
+    config.obs_dim = obs_dim
     actor = Actor(
         obs_dim * config.frame_stack,
         act_dim=3,
