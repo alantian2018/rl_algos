@@ -46,11 +46,14 @@ class Elevator:
             raise ValueError(f"Invalid action: {action}")
 
     def unload_people(self):
+        remaining = []
         num_unloaded = 0
         for person in self.carrying_people:
             if person.target_floor == self.current_floor:
-                self.carrying_people.remove(person)
                 num_unloaded += 1
+            else:
+                remaining.append(person)
+        self.carrying_people = remaining
         return num_unloaded
 
     def reset(self):
@@ -130,13 +133,17 @@ class ElevatorWrapper:
             did_invalid_actions.append(did_invalid_action)
             elevator_waiting_times_list.extend(e_waiting_times)
 
+        num_in_elevators = sum(
+            len(e.carrying_people) for e in self.elevators
+        )
         reward = self.calculate_reward(
             num_unloaded_list,
-            any(did_invalid_actions),
+            did_invalid_actions,
             waiting_people,
-            elevator_waiting_times_list,
+            num_in_elevators,
         )
         info = {"did_invalid_actions": did_invalid_actions}
+        info["num_unloaded"] = sum(num_unloaded_list)
         if elevator_waiting_times_list:
             info["mean_elevator_waiting_time"] = sum(elevator_waiting_times_list) / len(
                 elevator_waiting_times_list
@@ -159,16 +166,15 @@ class ElevatorWrapper:
         return np.array(elevator_obs).flatten()
 
     def calculate_reward(
-        self, num_unloaded, did_invalid_action, waiting_people, elevator_waiting_times
+        self, num_unloaded, did_invalid_action, waiting_people, num_in_elevators
     ):
         reward = sum(num_unloaded)
-        reward -= 10 if did_invalid_action else 0
+        percentage_invalid_actions = sum(did_invalid_action) / len(did_invalid_action)
+       # reward -= ( 10 * percentage_invalid_actions )
         # add timestep penalty
 
-        reward -= sum(elevator_waiting_times) * 0.01
+        reward -= num_in_elevators * 0.01
         for floor in waiting_people:
             for direction in floor:
-                reward -= len(direction) * 0.01
-        return reward
-        # elevator reward function
-        # add the people waiting penalty
+                reward -= len(direction) * 0.02
+        return reward / len(self.elevators)
