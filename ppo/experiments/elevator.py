@@ -34,7 +34,9 @@ class ElevatorConfig(PPOConfig):
     video_log_freq: int = 5000
 
     save_freq: int = 20_000
-    path_to_checkpoint: str = "ppo/checkpoints/elevator/4-32/20260224_180224/checkpoint_50000.pt"
+    path_to_checkpoint: str = (
+        "ppo/checkpoints/elevator/4-32/20260224_180224/checkpoint_50000.pt"
+    )
 
 
 def make_elevator_env(
