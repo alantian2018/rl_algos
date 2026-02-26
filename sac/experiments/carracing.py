@@ -6,6 +6,7 @@ from sac import SAC, SACConfig, Qfunction, CNNEncoder, Policy
 
 from common import NormalizeObsWrapper
 
+
 def make_carracing_env(render_mode=None, normalize=True):
     env = gymnasium.make(
         "CarRacing-v3",
@@ -42,7 +43,7 @@ class CarRacing(SACConfig):
     log_freq: int = 100
 
     wandb_entity: str = None
- 
+
 
 @draccus.wrap()
 def main(config: CarRacing):

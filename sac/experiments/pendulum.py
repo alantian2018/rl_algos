@@ -23,7 +23,6 @@ class PendulumSACConfig(SACConfig):
     replay_buffer_capacity: int = 1_000_000
     total_train_steps: int = 10_000
 
-
     video_log_freq: int = 1000
     log_freq: int = 100
     save_freq: int = 25_000

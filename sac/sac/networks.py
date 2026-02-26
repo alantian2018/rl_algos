@@ -9,7 +9,13 @@ MIN_LOG_STD = -20
 
 
 class BaseAction(nn.Module):
-    def __init__(self, hidden_dim: int, action_dim: int, action_low: list[int], action_high: list[int]):
+    def __init__(
+        self,
+        hidden_dim: int,
+        action_dim: int,
+        action_low: list[int],
+        action_high: list[int],
+    ):
         super().__init__()
         self.mu = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -21,14 +27,12 @@ class BaseAction(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
         )
-        
+
         self.register_buffer(
-            "action_low",
-            torch.tensor(action_low, dtype=torch.float32)
+            "action_low", torch.tensor(action_low, dtype=torch.float32)
         )
         self.register_buffer(
-            "action_high",
-            torch.tensor(action_high, dtype=torch.float32)
+            "action_high", torch.tensor(action_high, dtype=torch.float32)
         )
         self.action_dim = action_dim
 
@@ -110,7 +114,12 @@ class CNNEncoder(Encoder):
 
 class Policy(nn.Module):
     def __init__(
-        self, encoder, action_dim=None, action_head=None, action_low=None, action_high=None
+        self,
+        encoder,
+        action_dim=None,
+        action_head=None,
+        action_low=None,
+        action_high=None,
     ):
         super().__init__()
         self.encoder = encoder

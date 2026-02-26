@@ -7,8 +7,8 @@ from common import GlobalConfig
 class SACConfig(GlobalConfig):
     state_dim: Union[int, tuple]
     action_dim: int
-    action_low: tuple # of length action_dim 
-    action_high: tuple # of length action_dim
+    action_low: tuple  # of length action_dim
+    action_high: tuple  # of length action_dim
     hidden_dim: int = 64
 
     # discount factor
