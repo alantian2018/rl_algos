@@ -21,9 +21,9 @@ class ElevatorConfig(PPOConfig):
             "num_unloaded",
         ]
     )
-    num_elevators: int = 4
-    num_floors: int = 30
-    max_steps: int = 300
+    num_elevators: int = 3
+    num_floors: int = 34
+    max_steps: int = 1000
     max_people: int = 100
     spawn_rate: float = 0.02
     entropy_coefficient: float = 0.01

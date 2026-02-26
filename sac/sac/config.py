@@ -7,6 +7,8 @@ from common import GlobalConfig
 class SACConfig(GlobalConfig):
     state_dim: Union[int, tuple]
     action_dim: int
+    action_low: tuple # of length action_dim 
+    action_high: tuple # of length action_dim
     hidden_dim: int = 64
 
     # discount factor
@@ -29,9 +31,7 @@ class SACConfig(GlobalConfig):
     before_training_steps: int = 1000
     gradient_step_ratio: int = 1  # num of gradient steps per rollout step
     collect_rollout_steps: int = 1000
-    action_low: float = 9999
-    action_high: float = 9999
-    is_continuous: bool = True
+
     save_dir: Optional[str] = None
 
     def __post_init__(self):

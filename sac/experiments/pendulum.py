@@ -14,14 +14,15 @@ class PendulumSACConfig(SACConfig):
     exp_name: str = "pendulum"
     state_dim: int = 3
     action_dim: int = 1
+    action_low: tuple = (-2.0,)
+    action_high: tuple = (2.0,)
 
     gradient_step_ratio: int = 5
     collect_rollout_steps: int = 128
     before_training_steps: int = 1000
     replay_buffer_capacity: int = 1_000_000
     total_train_steps: int = 10_000
-    action_low: float = -2.0
-    action_high: float = 2.0
+
 
     video_log_freq: int = 1000
     log_freq: int = 100

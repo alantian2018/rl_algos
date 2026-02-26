@@ -9,7 +9,7 @@ MIN_LOG_STD = -20
 
 
 class BaseAction(nn.Module):
-    def __init__(self, hidden_dim: int, action_dim: int, action_low=0, action_high=1):
+    def __init__(self, hidden_dim: int, action_dim: int, action_low: list[int], action_high: list[int]):
         super().__init__()
         self.mu = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -21,8 +21,15 @@ class BaseAction(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
         )
-        self.action_low = action_low
-        self.action_high = action_high
+        
+        self.register_buffer(
+            "action_low",
+            torch.tensor(action_low, dtype=torch.float32)
+        )
+        self.register_buffer(
+            "action_high",
+            torch.tensor(action_high, dtype=torch.float32)
+        )
         self.action_dim = action_dim
 
     def forward(self, x):
@@ -35,13 +42,14 @@ class BaseAction(nn.Module):
     def get_action(self, x):
         dist = self.forward(x)
         u = dist.rsample()
+
         action = torch.tanh(u)
         action_scaled = (action + 1) / 2 * (
             self.action_high - self.action_low
         ) + self.action_low
         log_probs = dist.log_prob(u)
         log_probs -= torch.log(1 - action.pow(2) + 1e-6)
-        log_probs -= torch.log(torch.tensor((self.action_high - self.action_low) / 2.0))
+        log_probs -= torch.log((self.action_high - self.action_low) / 2.0)
         log_probs = log_probs.sum(dim=-1, keepdim=True)
         return action_scaled, log_probs
 
@@ -102,7 +110,7 @@ class CNNEncoder(Encoder):
 
 class Policy(nn.Module):
     def __init__(
-        self, encoder, action_dim=None, action_head=None, action_low=0, action_high=1
+        self, encoder, action_dim=None, action_head=None, action_low=None, action_high=None
     ):
         super().__init__()
         self.encoder = encoder

@@ -6,8 +6,6 @@ from sac import SAC, SACConfig, Qfunction, CNNEncoder, Policy
 
 from common import NormalizeObsWrapper
 
-
-# TODO WIP NEED TO ADD CUSTOM POLICY AND Q NETWORKS HERE
 def make_carracing_env(render_mode=None, normalize=True):
     env = gymnasium.make(
         "CarRacing-v3",
@@ -24,22 +22,27 @@ def make_carracing_env(render_mode=None, normalize=True):
 class CarRacing(SACConfig):
     exp_name: str = "carracing"
     state_dim: tuple = field(default=(96, 96, 3))
+
     action_dim: int = 3
-    action_low: float = -1.0
-    action_high: float = 1.0
+    action_low: float = (-1.0, 0.0, 0.0)
+    action_high: float = (1.0, 1.0, 1.0)
+
     hidden_dim: int = 128
     autotune_entropy: bool = True
     batch_size: int = 64
     gradient_step_ratio: int = 3
     collect_rollout_steps: int = 64
     before_training_steps: int = 500
+
     replay_buffer_capacity: int = 10_000_000
-    total_train_steps: int = 50_000
+    total_train_steps: int = 500_000
+
     video_log_freq: int = 2_000
     save_freq: int = 10_000
     log_freq: int = 100
-    device: str = "cpu"
 
+    wandb_entity: str = None
+ 
 
 @draccus.wrap()
 def main(config: CarRacing):

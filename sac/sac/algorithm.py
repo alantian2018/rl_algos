@@ -115,8 +115,7 @@ class SAC(BaseAlgorithm):
                     self.device
                 )
                 action, _ = self.policy.get_action(obs_tensor)
-                if not self.config.is_continuous:
-                    action = torch.floor(action).to(torch.int32)
+ 
 
                 try:
                     next_obs, reward, terminated, truncated, _ = self.env.step(
@@ -204,16 +203,13 @@ class SAC(BaseAlgorithm):
                 )
 
     def train(self, total_train_steps: int):
-        assert (
-            self.config.action_low < self.config.action_high
-        ), "action_low must be less than action_high"
 
-        if not self.config.is_continuous:
+        assert len(self.config.action_low) == len(self.config.action_high) == self.config.action_dim
+
+        for (i,j) in zip (self.config.action_low, self.config.action_high):
             assert (
-                self.config.action_low == 0 and self.config.action_dim == 1
-            ), "action_low must be 0 and action dim must be 1"
-            self.config.action_high -= 1e-6
-            print("using torch.floor for action")
+                i < j
+            ), "action_low must be less than action_high"
 
         while len(self.replay_buffer) < self.config.before_training_steps:
             self.collect_rollout()
