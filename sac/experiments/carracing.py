@@ -32,7 +32,7 @@ class CarRacing(SACConfig):
     autotune_entropy: bool = True
     batch_size: int = 256
     gradient_step_ratio: int = 3
-    collect_rollout_steps: int = 128
+    collect_rollout_steps: int = 256
     before_training_steps: int = 1000
 
     replay_buffer_capacity: int = 10_000_000
