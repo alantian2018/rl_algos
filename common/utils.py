@@ -122,7 +122,7 @@ class Logger:
                 try:
                     item.load_state_dict(checkpoint[f"{key}_state_dict"])
                 except:
-                    print(termcolor.colored(f"WARNING! Failed to load {key}", "yellow"))
+                    raise ValueError(termcolor.colored(f"Failed to load {key}", "red"))
             else:
 
                 networks[key] = checkpoint[key]

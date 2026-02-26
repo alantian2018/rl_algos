@@ -30,10 +30,10 @@ class CarRacing(SACConfig):
 
     hidden_dim: int = 128
     autotune_entropy: bool = True
-    batch_size: int = 64
+    batch_size: int = 256
     gradient_step_ratio: int = 3
-    collect_rollout_steps: int = 64
-    before_training_steps: int = 500
+    collect_rollout_steps: int = 128
+    before_training_steps: int = 1000
 
     replay_buffer_capacity: int = 10_000_000
     total_train_steps: int = 500_000
