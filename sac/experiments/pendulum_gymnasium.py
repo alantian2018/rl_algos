@@ -18,7 +18,7 @@ import torch
 
 def make_env():
     def _init():
-        env = gymnasium.make("Pendulum-v1",  render_mode="rgb_array")
+        env = gymnasium.make("Pendulum-v1", render_mode="rgb_array")
         return env
 
     return _init
