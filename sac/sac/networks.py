@@ -55,7 +55,8 @@ class BaseAction(nn.Module):
         log_probs -= torch.log(1 - action.pow(2) + 1e-6)
         log_probs -= torch.log((self.action_high - self.action_low) / 2.0)
         log_probs = log_probs.sum(dim=-1, keepdim=True)
-        return action_scaled, log_probs
+        info = {"mu": dist.loc.detach(), "std": dist.scale.detach()}
+        return action_scaled, log_probs, info
 
 
 class Encoder(nn.Module):

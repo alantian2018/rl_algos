@@ -161,17 +161,14 @@ class Logger:
             frames.append(frame)
 
             with torch.no_grad():
-                distribution = actor(frame_stack.get_frames())
-                action = distribution.sample()
+                if hasattr(actor, "get_action"):
+                    action = actor.get_action(frame_stack.get_frames())[0]
+                else:
+                    distribution = actor(frame_stack.get_frames())
+                    action = distribution.sample()
 
-            try:
-                obs, reward, terminated, truncated, _ = eval_env.step(
-                    action.squeeze(0).cpu().numpy()
-                )
-            except IndexError:
-                obs, reward, terminated, truncated, _ = eval_env.step(
-                    action.cpu().numpy()
-                )
+            action = action.flatten().cpu().numpy()
+            obs, reward, terminated, truncated, _ = eval_env.step(action)
             obs = torch.tensor(obs, dtype=torch.float32).to(device)
             frame_stack.add_to_frame_stack(obs)
             episode_return += reward

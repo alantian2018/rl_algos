@@ -3,6 +3,7 @@ from typing import Optional, Callable
 
 
 from common.base_algorithm import BaseAlgorithm
+from common import FrameStack
 from .networks import Policy, Qfunction
 from .replaybuffer import ReplayBuffer
 import torch.optim as optim
@@ -49,6 +50,10 @@ class SAC(BaseAlgorithm):
         )
 
         self.old_obs, _ = self.env.reset()
+        self.frame_stack = FrameStack(
+            frames=self.config.frame_stack, raw_obs_dim=self.raw_obs_dim
+        )
+        self._add_obs_to_frame_stack(self.old_obs)
 
         if config.autotune_entropy:
             if config.target_entropy is None:
@@ -81,7 +86,7 @@ class SAC(BaseAlgorithm):
     def _maybe_autotune_entropy(self, obs):
         if self.config.autotune_entropy:
             with torch.no_grad():
-                _, log_probs = self.policy.get_action(obs)
+                _, log_probs, _ = self.policy.get_action(obs)
             alpha_loss = (
                 -self.log_alpha.exp() * (log_probs + self.target_entropy)
             ).mean()
@@ -108,40 +113,37 @@ class SAC(BaseAlgorithm):
 
         return networks
 
+    def _add_obs_to_frame_stack(self, obs):
+        obs_tensor = torch.from_numpy(np.asarray(obs, dtype=np.float32)).to(self.device)
+        self.frame_stack.add_to_frame_stack(obs_tensor)
+
     def collect_rollout(self):
         with torch.no_grad():
             for _ in range(self.config.collect_rollout_steps):
-                obs_tensor = torch.tensor(self.old_obs, dtype=torch.float32).to(
-                    self.device
-                )
-                action, _ = self.policy.get_action(obs_tensor)
+                stacked_obs = self.frame_stack.get_frames()
+                action, _, _ = self.policy.get_action(stacked_obs)
+                action_np = action.flatten().cpu().detach().numpy()
 
-                try:
-                    next_obs, reward, terminated, truncated, _ = self.env.step(
-                        action.detach().cpu().numpy()
-                    )
-                except:
-                    next_obs, reward, terminated, truncated, _ = self.env.step(
-                        action.squeeze(0).detach().cpu().numpy()
-                    )
+                next_obs, reward, terminated, truncated, _ = self.env.step(action_np)
+                self._add_obs_to_frame_stack(next_obs)
+                stacked_next_obs = self.frame_stack.get_frames()
 
                 self.replay_buffer.add(
-                    obs=self.old_obs.copy(),
-                    action=action.detach().cpu().numpy(),
+                    obs=stacked_obs.cpu().numpy(),
+                    action=action_np,
                     reward=reward,
-                    next_obs=next_obs,
+                    next_obs=stacked_next_obs.cpu().numpy(),
                     terminated=terminated,
                     truncated=truncated,
                 )
-                self.old_obs = next_obs
 
-                # Track episode return
                 self.episode_return += reward
 
                 if terminated or truncated:
                     self.episode_returns.append(self.episode_return)
                     self.episode_return = 0.0
                     self.old_obs, _ = self.env.reset()
+                    self._add_obs_to_frame_stack(self.old_obs)
 
     def calculate_q_target(
         self,
@@ -153,13 +155,11 @@ class SAC(BaseAlgorithm):
         with torch.no_grad():
             dones = terminated  # | truncated
 
-            next_obs_tensor = torch.tensor(next_obs, dtype=torch.float32).to(
-                self.device
-            )
-            reward_tensor = torch.tensor(reward, dtype=torch.float32).to(self.device)
-            dones_tensor = torch.tensor(dones, dtype=torch.float32).to(self.device)
+            next_obs_tensor = torch.from_numpy(next_obs).to(self.device)
+            reward_tensor = torch.from_numpy(reward).to(self.device)
+            dones_tensor = torch.from_numpy(dones).to(self.device)
 
-            sampled_actions, log_probs = self.policy.get_action(next_obs_tensor)
+            sampled_actions, log_probs, _ = self.policy.get_action(next_obs_tensor)
 
             q1 = self.target_qf1(next_obs_tensor, sampled_actions)
             q2 = self.target_qf2(next_obs_tensor, sampled_actions)
@@ -170,12 +170,12 @@ class SAC(BaseAlgorithm):
 
     def calculate_policy_target(self, obs_tensor: np.ndarray):
 
-        actions, log_probs = self.policy.get_action(obs_tensor)
+        actions, log_probs, info = self.policy.get_action(obs_tensor)
 
         q1 = self.qf1(obs_tensor, actions)
         q2 = self.qf2(obs_tensor, actions)
 
-        return torch.min(q1, q2) - (self.alpha * log_probs)
+        return torch.min(q1, q2) - (self.alpha * log_probs), info
 
     def update_qf(self, qf1_loss, qf2_loss):
         self.optimizer_qf1.zero_grad()
@@ -212,8 +212,11 @@ class SAC(BaseAlgorithm):
         for i, j in zip(self.config.action_low, self.config.action_high):
             assert i < j, "action_low must be less than action_high"
 
+        print(f"Before training steps: {self.config.before_training_steps}")
         while len(self.replay_buffer) < self.config.before_training_steps:
             self.collect_rollout()
+        print("replay buffer size: ", len(self.replay_buffer))
+        print("starting training....")
 
         for step in tqdm(range(total_train_steps), desc="Training"):
             # Maybe record video
@@ -233,6 +236,7 @@ class SAC(BaseAlgorithm):
             qf1_loss_total = 0.0
             qf2_loss_total = 0.0
             policy_loss_total = 0.0
+            last_policy_info = {}
 
             for _ in range(self.config.gradient_step_ratio):
                 (
@@ -244,10 +248,8 @@ class SAC(BaseAlgorithm):
                     truncated,
                 ) = self.replay_buffer.sample(self.config.batch_size)
 
-                obs_tensor = torch.tensor(obs, dtype=torch.float32).to(self.device)
-                action_tensor = torch.tensor(action, dtype=torch.float32).to(
-                    self.device
-                )
+                obs_tensor = torch.from_numpy(obs).to(self.device)
+                action_tensor = torch.from_numpy(action).to(self.device)
 
                 q_target = self.calculate_q_target(
                     next_obs, reward, terminated, truncated
@@ -257,9 +259,9 @@ class SAC(BaseAlgorithm):
                 qf2_loss = F.mse_loss(self.qf2(obs_tensor, action_tensor), q_target)
                 self.update_qf(qf1_loss, qf2_loss)
 
-                policy_target = self.calculate_policy_target(obs_tensor)
-                # we need to push towards the right way ie minimize the loss here. no mse since we need to move
-                # towards this direction, we don't want penalty for being too low.
+                policy_target, last_policy_info = self.calculate_policy_target(
+                    obs_tensor
+                )
                 policy_loss = -policy_target.mean()
                 self.optimizer_policy.zero_grad()
                 policy_loss.backward()
@@ -274,16 +276,24 @@ class SAC(BaseAlgorithm):
 
             # Log training metrics
             if step % self.config.log_freq == 0:
-                self.logger.log_training(
-                    {
-                        "qf1_loss": qf1_loss_total / self.config.gradient_step_ratio,
-                        "qf2_loss": qf2_loss_total / self.config.gradient_step_ratio,
-                        "policy_loss": policy_loss_total
-                        / self.config.gradient_step_ratio,
-                        "alpha": self.alpha,
-                    },
-                    step=step,
-                )
+                metrics = {
+                    "qf1_loss": qf1_loss_total / self.config.gradient_step_ratio,
+                    "qf2_loss": qf2_loss_total / self.config.gradient_step_ratio,
+                    "policy_loss": policy_loss_total / self.config.gradient_step_ratio,
+                    "alpha": self.alpha,
+                }
+                self.logger.log_training(metrics, step=step)
+                if last_policy_info:
+                    mu = last_policy_info["mu"]
+                    std = last_policy_info["std"]
+                    debug_metrics = {}
+                    for i in range(mu.shape[-1]):
+                        debug_metrics[f"mu_{i}"] = mu[:, i].mean().item()
+                        debug_metrics[f"std_{i}"] = std[:, i].mean().item()
+                    self.logger.log(
+                        {f"debug/{k}": v for k, v in debug_metrics.items()},
+                        step=step,
+                    )
             self.logger.maybe_save_checkpoint(step=step, networks=self._get_networks())
         self.logger.save_checkpoint(
             step=total_train_steps, networks=self._get_networks()

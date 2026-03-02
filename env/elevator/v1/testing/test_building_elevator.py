@@ -202,9 +202,7 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, _, did_invalid, wait_times = elevator.step(
-            1, waiting_people, timestep=0
-        )
+        obs, num_unloaded, _, did_invalid = elevator.step(1, waiting_people, timestep=0)
         assert elevator.current_floor == 0
         assert num_unloaded == 0
         assert did_invalid is False
@@ -214,9 +212,7 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, _, did_invalid, _ = elevator.step(
-            2, waiting_people, timestep=0
-        )
+        obs, num_unloaded, _, did_invalid = elevator.step(2, waiting_people, timestep=0)
         assert elevator.current_floor == 1
         assert did_invalid is False
 
@@ -224,9 +220,7 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5, start_floor=2)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, _, did_invalid, _ = elevator.step(
-            0, waiting_people, timestep=0
-        )
+        obs, num_unloaded, _, did_invalid = elevator.step(0, waiting_people, timestep=0)
         assert elevator.current_floor == 1
         assert did_invalid is False
 
@@ -234,9 +228,7 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5, start_floor=4)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, _, did_invalid, _ = elevator.step(
-            2, waiting_people, timestep=0
-        )
+        obs, num_unloaded, _, did_invalid = elevator.step(2, waiting_people, timestep=0)
         assert elevator.current_floor == 4  # didn't move
         assert did_invalid is True
 
@@ -244,9 +236,7 @@ class TestElevator:
         np.random.seed(SEED)
         elevator = Elevator(max_floor=5)
         waiting_people = [[[], []] for _ in range(5)]
-        obs, num_unloaded, _, did_invalid, _ = elevator.step(
-            0, waiting_people, timestep=0
-        )
+        obs, num_unloaded, _, did_invalid = elevator.step(0, waiting_people, timestep=0)
         assert elevator.current_floor == 0
         assert did_invalid is True
 
@@ -271,7 +261,7 @@ class TestElevator:
         elevator.step(2, waiting_people, timestep=1)
         assert elevator.current_floor == 3
         # Step 3: at floor 3, idle to unload (unload happens at start of step, before move)
-        obs, num_unloaded, _, _, _ = elevator.step(1, waiting_people, timestep=2)
+        obs, num_unloaded, _, _ = elevator.step(1, waiting_people, timestep=2)
         assert num_unloaded == 1
         assert len(elevator.carrying_people) == 0
 

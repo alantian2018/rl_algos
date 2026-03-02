@@ -5,8 +5,16 @@ from sac import Policy, Qfunction, MLPEncoder
 from sac import SAC, SACConfig
 
 
+class PendulumActionWrapper(gymnasium.ActionWrapper):
+    """Pendulum-v1 expects a list/array action, not a scalar."""
+
+    def action(self, action):
+        return [action] if not hasattr(action, "__len__") else action
+
+
 def make_pendulum_env(render_mode=None):
-    return gymnasium.make("Pendulum-v1", render_mode=render_mode)
+    env = gymnasium.make("Pendulum-v1", render_mode=render_mode)
+    return PendulumActionWrapper(env)
 
 
 @dataclass
@@ -24,7 +32,7 @@ class PendulumSACConfig(SACConfig):
     total_train_steps: int = 10_000
 
     video_log_freq: int = 1000
-    log_freq: int = 100
+    log_freq: int = 5
     save_freq: int = 25_000
 
 
