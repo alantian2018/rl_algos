@@ -91,8 +91,11 @@ def test_experiment_passes_configured_evaluation_seed(seed):
     agent = Mock()
     evaluate(agent, config)
     agent.evaluate.assert_called_once_with(
-        config.eval_episodes, seed=seed, reward_key="raw_reward",
-        video_path=None, video_fps=config.video_fps,
+        config.eval_episodes,
+        seed=seed,
+        reward_key="raw_reward",
+        video_path=None,
+        video_fps=config.video_fps,
     )
 
 
