@@ -19,7 +19,7 @@ Consider
     a perfect critic, then delta = 0 for all timesteps.
         Then, we don't need to propogate a training signal to actor since we are already perfect.  
         Theoretically, this is degenerate since actor could be really bad,
-        but in practice, the actor will always discover acions that lead to better rewards than expected. 
+        but in practice, the actor will always discover actions that lead to better rewards than expected. 
     a random critic, then delta will be positive or negative sometimes
         we want to penalize the critic for being wrong and push actor towards the better 
         than expected states (via higher advantage)

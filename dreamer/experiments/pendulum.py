@@ -70,16 +70,16 @@ class PendulumConfig(DreamerConfig):
     free_nats: float = 3.0
     device: str = "mps"
     use_wandb: bool = True
-    save_freq: int = 200_000
+    save_freq: int = 10_000
     log_freq: int = 1
     total_train_steps: int = 2_000_000
-    eval_every: int = 5_000
+    eval_every: int = 1_000
     eval_episodes: int = 5
-    video_log_freq: int = 50_000
+    video_log_freq: int = 2_000
     video_fps: int = 10
     action_repeat: int = 2
     reward_scale: float = 0.1
-    num_threads: int = 1
+    num_threads: int = 4
 
 
 @torch.no_grad()

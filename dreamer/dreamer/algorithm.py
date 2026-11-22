@@ -274,7 +274,10 @@ class Dreamer(BaseAlgorithm):
         if total_train_steps < 1:
             raise ValueError("total_train_steps must be positive")
         last_logged_update = self.gradient_steps
-        progress = tqdm(total=total_train_steps, initial=self.env_steps, desc="Training", unit="steps")
+        progress = tqdm(
+            total=total_train_steps, initial=self.env_steps, desc="Training",
+            unit="steps", mininterval=0, miniters=1,
+        )
         try:
             while self.env_steps < total_train_steps:
                 progress.set_description("Collecting episode")
@@ -290,12 +293,12 @@ class Dreamer(BaseAlgorithm):
                 if self.env_steps >= self.config.before_training_steps and replay_ready and can_sample:
                     for update in range(self.config.train_steps_per_episode):
                         update_label = f"{update + 1}/{self.config.train_steps_per_episode}"
-                        progress.set_description(f"Updating WM [{update_label}]")
+                        progress.set_description(f"Dreaming... [{update_label}]")
                         metrics, states = self.update_world_model(self.config.batch_size)
                         if states.deterministic.shape[0] > 0:
-                            progress.set_description(f"Imagining [{update_label}]")
+                         
                             rollout = self.imagine_rollout(states, self.config.imagination_horizon)
-                            progress.set_description(f"Updating actor/critic [{update_label}]")
+                           
                             behavior_metrics = self.update_actor_critic(*rollout)
                             metrics.update(behavior_metrics)
                         for key, value in metrics.items():

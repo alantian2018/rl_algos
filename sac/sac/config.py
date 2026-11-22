@@ -32,6 +32,8 @@ class SACConfig(GlobalConfig):
     gradient_step_ratio: int = 1  # num of gradient steps per rollout step
     collect_rollout_steps: int = 1000
 
+    save_replay_buffer: bool = False
+
     save_dir: Optional[str] = None
 
     def __post_init__(self):

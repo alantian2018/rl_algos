@@ -75,7 +75,7 @@ class SAC(BaseAlgorithm):
         self.episode_return = 0.0
         self.episode_returns = []
         loaded = self.load_ckpt_if_needed()
-        if loaded and "replay_buffer" in loaded:
+        if loaded and "replay_buffer" in loaded and self.config.save_replay_buffer:
             self.replay_buffer = loaded["replay_buffer"]
             print(
                 colored(
@@ -105,8 +105,10 @@ class SAC(BaseAlgorithm):
             "target_qf2": self.target_qf2,
             "policy": self.policy,
             "policy_optimizer": self.optimizer_policy,
-            "replay_buffer": self.replay_buffer,
+         
         }
+        if self.config.save_replay_buffer:
+            networks["replay_buffer"] = self.replay_buffer
         if self.config.autotune_entropy:
             networks["log_alpha"] = self.log_alpha
             networks["log_alpha_optimizer"] = self.log_alpha_optimizer
@@ -218,20 +220,23 @@ class SAC(BaseAlgorithm):
         print("replay buffer size: ", len(self.replay_buffer))
         print("starting training....")
 
-        for step in tqdm(range(total_train_steps), desc="Training"):
-            # Maybe record video
-            self.logger.maybe_record_video(self.policy, step, self.device)
+        steps_sampled = 0
+        pbar = tqdm(total=total_train_steps, desc="Training", unit="steps")
 
-            # always collect rollout
+        while steps_sampled < total_train_steps:
+            self.logger.maybe_record_video(self.policy, steps_sampled, self.device)
+
             self.episode_returns = []
             self.collect_rollout()
+            steps_sampled += self.config.collect_rollout_steps
+            pbar.update(self.config.collect_rollout_steps)
 
-            # Log rollout stats
-            self.logger.log_rollout(self.episode_returns, step=step)
+            self.logger.log_rollout(self.episode_returns, step=steps_sampled)
 
-            # if replay buffer is not full, collect more rollouts
             while len(self.replay_buffer) < self.config.batch_size:
                 self.collect_rollout()
+                steps_sampled += self.config.collect_rollout_steps
+                pbar.update(self.config.collect_rollout_steps)
 
             qf1_loss_total = 0.0
             qf2_loss_total = 0.0
@@ -274,28 +279,19 @@ class SAC(BaseAlgorithm):
                 qf2_loss_total += qf2_loss.item()
                 policy_loss_total += policy_loss.item()
 
-            # Log training metrics
-            if step % self.config.log_freq == 0:
+            if steps_sampled % (self.config.log_freq * self.config.collect_rollout_steps) == 0:
                 metrics = {
                     "qf1_loss": qf1_loss_total / self.config.gradient_step_ratio,
                     "qf2_loss": qf2_loss_total / self.config.gradient_step_ratio,
                     "policy_loss": policy_loss_total / self.config.gradient_step_ratio,
                     "alpha": self.alpha,
                 }
-                self.logger.log_training(metrics, step=step)
-                if last_policy_info:
-                    mu = last_policy_info["mu"]
-                    std = last_policy_info["std"]
-                    debug_metrics = {}
-                    for i in range(mu.shape[-1]):
-                        debug_metrics[f"mu_{i}"] = mu[:, i].mean().item()
-                        debug_metrics[f"std_{i}"] = std[:, i].mean().item()
-                    self.logger.log(
-                        {f"debug/{k}": v for k, v in debug_metrics.items()},
-                        step=step,
-                    )
-            self.logger.maybe_save_checkpoint(step=step, networks=self._get_networks())
+                self.logger.log_training(metrics, step=steps_sampled)
+           
+            self.logger.maybe_save_checkpoint(step=steps_sampled, networks=self._get_networks())
+
+        pbar.close()
         self.logger.save_checkpoint(
-            step=total_train_steps, networks=self._get_networks()
+            step=steps_sampled, networks=self._get_networks()
         )
         self.logger.finish()
