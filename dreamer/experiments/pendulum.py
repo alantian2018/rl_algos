@@ -5,6 +5,7 @@ from pathlib import Path
 from functools import partial
 
 import cv2
+import imageio.v2 as imageio
 import draccus
 import gymnasium
 import numpy as np
@@ -13,6 +14,7 @@ import wandb
 
 from dreamer.dreamer.algorithm import Dreamer
 from dreamer.dreamer.config import DreamerConfig
+from dreamer.dreamer.visualization import reconstruct_replay
 
 
 class PixelPendulum(gymnasium.Wrapper):
@@ -72,10 +74,12 @@ class PendulumConfig(DreamerConfig):
     use_wandb: bool = True
     save_freq: int = 10_000
     log_freq: int = 1
+
+    # this is kinda a misnomer, this is number of environment interactions. should probably change but ehhhhhhhhh
     total_train_steps: int = 2_000_000
-    eval_every: int = 1_000
+    eval_every: int = 200
     eval_episodes: int = 5
-    video_log_freq: int = 2_000
+    video_log_freq: int = 600
     video_fps: int = 10
     action_repeat: int = 2
     reward_scale: float = 0.1
@@ -114,8 +118,10 @@ def main(config: PendulumConfig):
     next_eval = agent.env_steps + config.eval_every
     next_video = agent.env_steps + config.video_log_freq if config.video_log_freq is not None else None
 
+    next_reconstruction = agent.env_steps + config.reconstruction_log_freq if config.reconstruction_log_freq is not None else None
+
     def log(metrics, step):
-        nonlocal next_eval, next_video
+        nonlocal next_eval, next_video, next_reconstruction
         with (run_dir / "training.jsonl").open("a") as stream:
             stream.write(json.dumps({"step": step, **metrics}) + "\n")
         metrics = dict(metrics)
@@ -133,6 +139,17 @@ def main(config: PendulumConfig):
             metrics["eval/raw_return_mean"] = float(np.mean(scores))
             if video_path is not None and agent.logger.use_wandb:
                 metrics["eval/video"] = wandb.Video(str(video_path), fps=config.video_fps, format="mp4")
+        if next_reconstruction is not None and agent.gradient_steps > 0 and (step >= next_reconstruction or final_step):
+            grid = reconstruct_replay(agent, config.reconstruction_frames)
+            if grid is not None:
+                image_path = run_dir / "reconstructions" / f"reconstruction_{step}.png"
+                image_path.parent.mkdir(parents=True, exist_ok=True)
+                imageio.imwrite(image_path, grid)
+                if agent.logger.use_wandb:
+                    metrics["model/reconstructions"] = wandb.Image(
+                        str(image_path), caption="Top: replay frames. Bottom: posterior reconstructions conditioned on observations."
+                    )
+                next_reconstruction = step + config.reconstruction_log_freq
         original_log(metrics, step)
 
     agent.logger.log = log

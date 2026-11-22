@@ -40,6 +40,8 @@ class DreamerConfig(GlobalConfig):
     save_replay_buffer: bool = False
     seed: int = 0
     log_freq: int = 10  # gradient updates
+    reconstruction_log_freq: int | None = 2_000
+    reconstruction_frames: int = 8
 
     gamma: float = 0.99
     lambda_: float = 0.95
@@ -63,6 +65,8 @@ class DreamerConfig(GlobalConfig):
             raise ValueError("training step counts must be nonnegative")
         if self.log_freq < 1 or self.imagination_horizon < 1:
             raise ValueError("log_freq and imagination_horizon must be positive")
+        if self.reconstruction_frames < 1 or (self.reconstruction_log_freq is not None and self.reconstruction_log_freq < 1):
+            raise ValueError("reconstruction_frames and enabled reconstruction_log_freq must be positive")
 
         if self.save_dir is None:
             self.save_dir = f"dreamer/checkpoints/{self.exp_name}"
