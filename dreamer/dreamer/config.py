@@ -22,7 +22,7 @@ class DreamerConfig(GlobalConfig):
     model_lr: float = 6e-4
     actor_lr: float = 8e-5
     critic_lr: float = 8e-5
-    grad_clip: float = 100.0
+    grad_clip: float = 50.0
     entropy_coefficient: float = 3e-4
     return_norm_rate: float = 0.01
 
