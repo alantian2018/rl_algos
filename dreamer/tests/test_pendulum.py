@@ -89,7 +89,9 @@ def test_world_model_applies_configured_weights_and_free_nats():
             parameter.zero_()
     obs = torch.zeros(1, 2, 1, 64, 64)
     flags = torch.zeros(1, 2, 1, dtype=torch.bool)
-    loss, metrics, _ = model.loss(obs, torch.zeros(1, 2, 1), torch.zeros(1, 2, 1), flags, flags, obs)
+    loss, metrics, _ = model.loss(
+        obs, torch.zeros(1, 2, 1), torch.zeros(1, 2, 1), flags, flags, obs
+    )
     torch.testing.assert_close(metrics["raw_kl"], torch.tensor(0.0))
     torch.testing.assert_close(metrics["kl_loss"], torch.tensor(3.0))
     torch.testing.assert_close(loss, torch.tensor(6.0))
@@ -100,12 +102,25 @@ def test_pixel_experiment_saves_reconstruction_images(tmp_path):
     from dreamer.experiments.pendulum import main
 
     config = PendulumConfig(
-        device="cpu", use_wandb=False, save_dir=str(tmp_path), save_freq=None,
-        total_train_steps=1, before_training_steps=0, train_steps_per_episode=1,
-        sequence_length=3, batch_size=1, imagination_horizon=2,
-        deterministic_dim=16, stochastic_dim=8, latent_obs_size=12, hidden_dim=32,
-        eval_episodes=1, video_log_freq=None, reconstruction_log_freq=1,
-        num_threads=1, action_repeat=2,
+        device="cpu",
+        use_wandb=False,
+        save_dir=str(tmp_path),
+        save_freq=None,
+        total_train_steps=1,
+        before_training_steps=0,
+        train_steps_per_episode=1,
+        sequence_length=3,
+        batch_size=1,
+        imagination_horizon=2,
+        deterministic_dim=16,
+        stochastic_dim=8,
+        latent_obs_size=12,
+        hidden_dim=32,
+        eval_episodes=1,
+        video_log_freq=None,
+        reconstruction_log_freq=1,
+        num_threads=1,
+        action_repeat=2,
     )
     main.__wrapped__(config)
     assert len(list(tmp_path.rglob("reconstruction_100.png"))) == 1

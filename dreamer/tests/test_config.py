@@ -7,8 +7,12 @@ from dreamer.dreamer.config import DreamerConfig
 
 def config(**overrides):
     fields = dict(
-        exp_name="carracing", obs_dim=(96, 96), obs_channels=3,
-        action_dim=2, action_low=(-1.0, 0.0), action_high=(1.0, 1.0),
+        exp_name="carracing",
+        obs_dim=(96, 96),
+        obs_channels=3,
+        action_dim=2,
+        action_low=(-1.0, 0.0),
+        action_high=(1.0, 1.0),
     )
     return DreamerConfig(**(fields | overrides))
 
@@ -43,15 +47,18 @@ def test_experiment_dataclass_can_override_defaults():
     assert Experiment().wandb_project == "dreamer-test"
 
 
-@pytest.mark.parametrize("overrides", [
-    {"action_low": (-1.0,)},
-    {"action_high": (-1.0, 1.0)},
-    {"action_low": (float("-inf"), 0.0)},
-    {"sequence_length": 0},
-    {"edge_weight": -1},
-    {"edge_weight": float("nan")},
-    {"replay_buffer_capacity": 2},
-])
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"action_low": (-1.0,)},
+        {"action_high": (-1.0, 1.0)},
+        {"action_low": (float("-inf"), 0.0)},
+        {"sequence_length": 0},
+        {"edge_weight": -1},
+        {"edge_weight": float("nan")},
+        {"replay_buffer_capacity": 2},
+    ],
+)
 def test_invalid_settings_are_rejected(overrides):
     with pytest.raises(ValueError):
         config(**overrides)

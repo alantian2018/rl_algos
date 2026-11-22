@@ -25,10 +25,18 @@ class ImageEnv(gymnasium.Env):
 @pytest.fixture
 def config():
     return DreamerConfig(
-        exp_name="test", obs_dim=(64, 64), obs_channels=3,
-        action_dim=2, action_low=(-2.0, 0.0), action_high=(2.0, 1.0),
-        deterministic_dim=16, stochastic_dim=8, hidden_dim=32, latent_obs_size=12,
-        device="cpu", use_wandb=False,
+        exp_name="test",
+        obs_dim=(64, 64),
+        obs_channels=3,
+        action_dim=2,
+        action_low=(-2.0, 0.0),
+        action_high=(2.0, 1.0),
+        deterministic_dim=16,
+        stochastic_dim=8,
+        hidden_dim=32,
+        latent_obs_size=12,
+        device="cpu",
+        use_wandb=False,
     )
 
 
@@ -49,8 +57,12 @@ def test_initialization_builds_separate_optimizers_and_configured_actor(config):
     state = algorithm.world_model.initial_state(1)
     action, _, _ = algorithm.actor.get_action(state)
     assert algorithm.env.action_space.contains(action.detach().numpy()[0])
-    torch.testing.assert_close(algorithm.actor.action_low, torch.tensor(config.action_low))
-    torch.testing.assert_close(algorithm.actor.action_high, torch.tensor(config.action_high))
+    torch.testing.assert_close(
+        algorithm.actor.action_low, torch.tensor(config.action_low)
+    )
+    torch.testing.assert_close(
+        algorithm.actor.action_high, torch.tensor(config.action_high)
+    )
 
 
 def test_initialization_preserves_custom_networks(config):
@@ -91,12 +103,20 @@ class ShortImageEnv(ImageEnv):
         self.t += 1
         self.image.fill(self.t / 10 if self.floating else self.t * 50)
         done = self.t == 3
-        return self.image, float(self.t), done and not self.truncate, done and self.truncate, {}
+        return (
+            self.image,
+            float(self.t),
+            done and not self.truncate,
+            done and self.truncate,
+            {},
+        )
 
 
 @pytest.mark.parametrize("truncated", [False, True])
 @pytest.mark.parametrize("channels_first", [False, True])
-def test_collection_preserves_observations_actions_and_final_transition(config, truncated, channels_first):
+def test_collection_preserves_observations_actions_and_final_transition(
+    config, truncated, channels_first
+):
     config.before_training_steps = 0
     env = ShortImageEnv(truncated, channels_first)
     algorithm = Dreamer(config, env)
@@ -118,7 +138,9 @@ def test_collection_preserves_observations_actions_and_final_transition(config, 
 
 
 @pytest.mark.parametrize("floating", [False, True])
-def test_collection_preprocesses_images_and_tracks_previous_actions(config, monkeypatch, floating):
+def test_collection_preprocesses_images_and_tracks_previous_actions(
+    config, monkeypatch, floating
+):
     # First action is random; subsequent actions use the actor.
     config.before_training_steps = 1
     env = ShortImageEnv(floating=floating)
@@ -145,7 +167,9 @@ def test_collection_preprocesses_images_and_tracks_previous_actions(config, monk
     assert len(actor_calls) == 2
     assert previous_actions[0].count_nonzero() == 0
     for t in (1, 2):
-        torch.testing.assert_close(previous_actions[t][0], torch.tensor(env.actions[t - 1]))
+        torch.testing.assert_close(
+            previous_actions[t][0], torch.tensor(env.actions[t - 1])
+        )
         expected = t / 10 if floating else t * 50 / 255
         torch.testing.assert_close(inputs[t], torch.full((1, 3, 64, 64), expected))
 
@@ -178,22 +202,36 @@ def test_collected_standard_transitions_feed_world_model_loss(config):
     )
     assert states.deterministic.shape == (1, 3, 16)
     predicted = algorithm.world_model.predict(states)
-    expected_reconstruction = 0.5 * (predicted["reconstructions"] - next_obs).square().sum((-3, -2, -1)).mean()
-    torch.testing.assert_close(metrics["reconstruction_loss"], expected_reconstruction.detach())
+    expected_reconstruction = (
+        0.5
+        * (predicted["reconstructions"] - next_obs).square().sum((-3, -2, -1)).mean()
+    )
+    torch.testing.assert_close(
+        metrics["reconstruction_loss"], expected_reconstruction.detach()
+    )
     total.backward()
-    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in algorithm.world_model.parameters())
+    assert all(
+        p.grad is not None and torch.isfinite(p.grad).all()
+        for p in algorithm.world_model.parameters()
+    )
 
 
 @pytest.mark.parametrize("floating", [False, True])
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_world_model_update_preprocesses_replay_and_changes_only_model(config, monkeypatch, floating, dtype):
+def test_world_model_update_preprocesses_replay_and_changes_only_model(
+    config, monkeypatch, floating, dtype
+):
     config.sequence_length = 3
     config.grad_clip = 0.1
     algorithm = Dreamer(config, ShortImageEnv(floating=floating))
     algorithm.world_model.to(dtype=dtype)
     algorithm.collect_episode()
-    before = {name: p.detach().clone() for name, p in algorithm.world_model.named_parameters()}
-    actor_before = {name: p.detach().clone() for name, p in algorithm.actor.named_parameters()}
+    before = {
+        name: p.detach().clone() for name, p in algorithm.world_model.named_parameters()
+    }
+    actor_before = {
+        name: p.detach().clone() for name, p in algorithm.actor.named_parameters()
+    }
     original_loss = algorithm.world_model.loss
 
     def loss(obs, actions, rewards, terminated, truncated, next_obs):
@@ -201,9 +239,14 @@ def test_world_model_update_preprocesses_replay_and_changes_only_model(config, m
             assert value.dtype == dtype
             assert value.device == next(algorithm.world_model.parameters()).device
         assert terminated.dtype == truncated.dtype == torch.bool
-        expected = torch.tensor([0, 0.1, 0.2] if floating else [0, 50 / 255, 100 / 255], dtype=dtype)
+        expected = torch.tensor(
+            [0, 0.1, 0.2] if floating else [0, 50 / 255, 100 / 255], dtype=dtype
+        )
         torch.testing.assert_close(obs[0, :, 0, 0, 0], expected)
-        expected_next = torch.tensor([0.1, 0.2, 0.3] if floating else [50 / 255, 100 / 255, 150 / 255], dtype=dtype)
+        expected_next = torch.tensor(
+            [0.1, 0.2, 0.3] if floating else [50 / 255, 100 / 255, 150 / 255],
+            dtype=dtype,
+        )
         torch.testing.assert_close(next_obs[0, :, 0, 0, 0], expected_next)
         return original_loss(obs, actions, rewards, terminated, truncated, next_obs)
 
@@ -212,13 +255,20 @@ def test_world_model_update_preprocesses_replay_and_changes_only_model(config, m
     assert algorithm.gradient_steps == 1
     assert not states.deterministic.requires_grad
     assert not states.stochastic.requires_grad
-    assert all(not value.requires_grad and torch.isfinite(value) for value in metrics.values())
-    assert any(not torch.equal(before[name], p) for name, p in algorithm.world_model.named_parameters())
+    assert all(
+        not value.requires_grad and torch.isfinite(value) for value in metrics.values()
+    )
+    assert any(
+        not torch.equal(before[name], p)
+        for name, p in algorithm.world_model.named_parameters()
+    )
     for name, parameter in algorithm.actor.named_parameters():
         torch.testing.assert_close(parameter, actor_before[name])
         assert parameter.grad is None
     assert all(p.grad is None for p in algorithm.critic.parameters())
-    norm = torch.stack([p.grad.norm() for p in algorithm.world_model.parameters()]).norm()
+    norm = torch.stack(
+        [p.grad.norm() for p in algorithm.world_model.parameters()]
+    ).norm()
     assert norm <= config.grad_clip + 1e-6
     # A second update must build a fresh graph and clear prior gradients.
     algorithm.update_world_model(1)
@@ -226,7 +276,9 @@ def test_world_model_update_preprocesses_replay_and_changes_only_model(config, m
 
 
 @pytest.mark.parametrize("horizon", [1, 4])
-def test_imagination_preserves_start_states_and_advances_trajectory(config, monkeypatch, horizon):
+def test_imagination_preserves_start_states_and_advances_trajectory(
+    config, monkeypatch, horizon
+):
     algorithm = Dreamer(config, ShortImageEnv())
     states = DreamerState(torch.randn(2, 3, 16), torch.randn(2, 3, 8))
     seen_states, seen_actions = [], []
@@ -242,7 +294,9 @@ def test_imagination_preserves_start_states_and_advances_trajectory(config, monk
 
     monkeypatch.setattr(algorithm.world_model, "step_env", step)
     monkeypatch.setattr(algorithm.env, "step", unexpected_env_step)
-    trajectory, actions, rewards, continuations, values, raw_actions = algorithm.imagine_rollout(states, horizon)
+    trajectory, actions, rewards, continuations, values, raw_actions = (
+        algorithm.imagine_rollout(states, horizon)
+    )
     assert trajectory.deterministic.shape == (6, horizon + 1, 16)
     assert trajectory.stochastic.shape == (6, horizon + 1, 8)
     assert actions.shape == (6, horizon, 2)
@@ -250,42 +304,73 @@ def test_imagination_preserves_start_states_and_advances_trajectory(config, monk
     assert rewards.shape == continuations.shape == (6, horizon, 1)
     assert raw_actions.shape == actions.shape
     scale = (algorithm.actor.action_high - algorithm.actor.action_low) / 2
-    torch.testing.assert_close(actions, algorithm.actor.action_low + (raw_actions.tanh() + 1) * scale)
-    torch.testing.assert_close(trajectory.get_state()[:, 0], states.flatten().get_state())
+    torch.testing.assert_close(
+        actions, algorithm.actor.action_low + (raw_actions.tanh() + 1) * scale
+    )
+    torch.testing.assert_close(
+        trajectory.get_state()[:, 0], states.flatten().get_state()
+    )
     for t in range(horizon):
-        torch.testing.assert_close(seen_states[t].get_state(), trajectory.get_state()[:, t])
+        torch.testing.assert_close(
+            seen_states[t].get_state(), trajectory.get_state()[:, t]
+        )
         torch.testing.assert_close(seen_actions[t], actions[:, t])
     assert algorithm.env_steps == algorithm.gradient_steps == 0
 
 
 def test_reinforce_imagination_has_no_gradients_or_parameter_flag_changes(config):
     algorithm = Dreamer(config, ShortImageEnv())
-    states = DreamerState(torch.randn(2, 16, requires_grad=True), torch.randn(2, 8, requires_grad=True))
-    parameters = list(algorithm.world_model.parameters()) + list(algorithm.critic.parameters())
+    states = DreamerState(
+        torch.randn(2, 16, requires_grad=True), torch.randn(2, 8, requires_grad=True)
+    )
+    parameters = list(algorithm.world_model.parameters()) + list(
+        algorithm.critic.parameters()
+    )
     parameters[0].requires_grad_(False)
     original_flags = [p.requires_grad for p in parameters]
-    trajectory, actions, rewards, continuations, values, raw_actions = algorithm.imagine_rollout(states, 3)
+    trajectory, actions, rewards, continuations, values, raw_actions = (
+        algorithm.imagine_rollout(states, 3)
+    )
     assert [p.requires_grad for p in parameters] == original_flags
     assert not trajectory.deterministic.requires_grad
     assert not trajectory.stochastic.requires_grad
-    assert all(not tensor.requires_grad for tensor in (actions, rewards, continuations, values, raw_actions))
+    assert all(
+        not tensor.requires_grad
+        for tensor in (actions, rewards, continuations, values, raw_actions)
+    )
 
 
 def test_reinforce_update_changes_actor_and_critic_without_model_gradients(config):
     algorithm = Dreamer(config, ShortImageEnv())
     states = DreamerState(torch.randn(2, 3, 16), torch.randn(2, 3, 8))
     rollout = algorithm.imagine_rollout(states, 3)
-    model_before = {name: p.detach().clone() for name, p in algorithm.world_model.named_parameters()}
-    actor_before = {name: p.detach().clone() for name, p in algorithm.actor.named_parameters()}
-    critic_before = {name: p.detach().clone() for name, p in algorithm.critic.named_parameters()}
+    model_before = {
+        name: p.detach().clone() for name, p in algorithm.world_model.named_parameters()
+    }
+    actor_before = {
+        name: p.detach().clone() for name, p in algorithm.actor.named_parameters()
+    }
+    critic_before = {
+        name: p.detach().clone() for name, p in algorithm.critic.named_parameters()
+    }
     metrics = algorithm.update_actor_critic(*rollout)
-    assert all(not value.requires_grad and torch.isfinite(value) for value in metrics.values())
+    assert all(
+        not value.requires_grad and torch.isfinite(value) for value in metrics.values()
+    )
     for name, parameter in algorithm.world_model.named_parameters():
         torch.testing.assert_close(parameter, model_before[name])
         assert parameter.grad is None
-    for module, before in ((algorithm.actor, actor_before), (algorithm.critic, critic_before)):
-        assert any(not torch.equal(before[name], p) for name, p in module.named_parameters())
-        assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in module.parameters())
+    for module, before in (
+        (algorithm.actor, actor_before),
+        (algorithm.critic, critic_before),
+    ):
+        assert any(
+            not torch.equal(before[name], p) for name, p in module.named_parameters()
+        )
+        assert all(
+            p.grad is not None and torch.isfinite(p.grad).all()
+            for p in module.parameters()
+        )
     algorithm.update_actor_critic(*algorithm.imagine_rollout(states, 3))
     assert torch.isfinite(algorithm.return_quantiles).all()
 
@@ -304,7 +389,9 @@ def test_positive_advantage_increases_selected_actions_likelihood(config):
     values = torch.zeros(1, 2, 1)
     actor_states = DreamerState(states.deterministic[:, :-1], states.stochastic[:, :-1])
     before = algorithm.actor.get_log_prob(actor_states, actions).detach()
-    algorithm.update_actor_critic(states, actions, rewards, continuations, values, actions)
+    algorithm.update_actor_critic(
+        states, actions, rewards, continuations, values, actions
+    )
     after = algorithm.actor.get_log_prob(actor_states, actions).detach()
     assert (after > before).all()
 
@@ -342,15 +429,21 @@ def test_return_normalization_tracks_smoothed_percentiles(config):
     rewards = torch.tensor([[[0.0]], [[100.0]]])
     continuation = torch.zeros(2, 1, 1)
     values = torch.zeros(2, 2, 1)
-    metrics = algorithm.update_actor_critic(states, actions, rewards, continuation, values, torch.zeros_like(actions))
+    metrics = algorithm.update_actor_critic(
+        states, actions, rewards, continuation, values, torch.zeros_like(actions)
+    )
     torch.testing.assert_close(algorithm.return_quantiles, torch.tensor([5.0, 95.0]))
     torch.testing.assert_close(metrics["return_scale"], torch.tensor(90.0))
-    algorithm.update_actor_critic(states, actions, rewards * 2, continuation, values, torch.zeros_like(actions))
+    algorithm.update_actor_critic(
+        states, actions, rewards * 2, continuation, values, torch.zeros_like(actions)
+    )
     torch.testing.assert_close(algorithm.return_quantiles, torch.tensor([6.25, 118.75]))
 
 
 @pytest.mark.parametrize("truncated, expected_count", [(False, 2), (True, 3)])
-def test_imagination_starts_exclude_termination_but_keep_truncation(config, monkeypatch, truncated, expected_count):
+def test_imagination_starts_exclude_termination_but_keep_truncation(
+    config, monkeypatch, truncated, expected_count
+):
     config.sequence_length = 3
     algorithm = Dreamer(config, ShortImageEnv(truncated=truncated))
     algorithm.collect_episode()
@@ -366,11 +459,15 @@ def test_imagination_starts_exclude_termination_but_keep_truncation(config, monk
     _, starts = algorithm.update_world_model(1)
     assert starts.deterministic.shape == (expected_count, 16)
     assert starts.stochastic.shape == (expected_count, 8)
-    torch.testing.assert_close(starts.deterministic, inferred[0].deterministic[0, :expected_count])
+    torch.testing.assert_close(
+        starts.deterministic, inferred[0].deterministic[0, :expected_count]
+    )
     assert not starts.deterministic.requires_grad
 
 
-def test_training_loop_warmup_updates_and_checkpoint_resume(config, tmp_path, monkeypatch):
+def test_training_loop_warmup_updates_and_checkpoint_resume(
+    config, tmp_path, monkeypatch
+):
     config.sequence_length = 3
     config.batch_size = 1
     config.before_training_steps = 4
@@ -382,7 +479,9 @@ def test_training_loop_warmup_updates_and_checkpoint_resume(config, tmp_path, mo
     config.save_dir = str(tmp_path)
     algorithm = Dreamer(config, ShortImageEnv())
     logged, finished, saved_steps = [], [], []
-    monkeypatch.setattr(algorithm.logger, "log", lambda metrics, step: logged.append((step, metrics)))
+    monkeypatch.setattr(
+        algorithm.logger, "log", lambda metrics, step: logged.append((step, metrics))
+    )
     monkeypatch.setattr(algorithm.logger, "finish", lambda: finished.append(True))
     original_save = algorithm.logger.save_checkpoint
 
@@ -391,7 +490,9 @@ def test_training_loop_warmup_updates_and_checkpoint_resume(config, tmp_path, mo
         return original_save(networks, step)
 
     monkeypatch.setattr(algorithm.logger, "save_checkpoint", save_checkpoint)
-    before = {name: p.detach().clone() for name, p in algorithm.actor.named_parameters()}
+    before = {
+        name: p.detach().clone() for name, p in algorithm.actor.named_parameters()
+    }
     algorithm.train(6)
     assert algorithm.env_steps == 6
     assert algorithm.gradient_steps == 2
@@ -401,16 +502,23 @@ def test_training_loop_warmup_updates_and_checkpoint_resume(config, tmp_path, mo
     assert "train/actor_loss" in logged[1][1]
     assert finished == [True]
     assert saved_steps == [3, 6]
-    assert any(not torch.equal(before[name], p) for name, p in algorithm.actor.named_parameters())
+    assert any(
+        not torch.equal(before[name], p)
+        for name, p in algorithm.actor.named_parameters()
+    )
 
     checkpoint = next(tmp_path.rglob("checkpoint_6.pt"))
-    restored = Dreamer(replace(config, path_to_checkpoint=str(checkpoint)), ShortImageEnv())
+    restored = Dreamer(
+        replace(config, path_to_checkpoint=str(checkpoint)), ShortImageEnv()
+    )
     assert restored.env_steps == 6
     assert restored.gradient_steps == 2
     assert restored.replay_buffer.size == 6
     torch.testing.assert_close(restored.return_quantiles, algorithm.return_quantiles)
     for name in ("world_model", "actor", "critic"):
-        for actual, expected in zip(getattr(restored, name).parameters(), getattr(algorithm, name).parameters()):
+        for actual, expected in zip(
+            getattr(restored, name).parameters(), getattr(algorithm, name).parameters()
+        ):
             torch.testing.assert_close(actual, expected)
     for name in ("model_optimizer", "actor_optimizer", "critic_optimizer"):
         assert getattr(restored, name).state_dict()["state"]
@@ -484,14 +592,22 @@ def test_evaluation_can_report_unscaled_reward_from_info(config):
     class ScaledEnv(ShortImageEnv):
         def step(self, action):
             obs, reward, terminated, truncated, info = super().step(action)
-            return obs, reward * 0.1, terminated, truncated, dict(info, raw_reward=reward)
+            return (
+                obs,
+                reward * 0.1,
+                terminated,
+                truncated,
+                dict(info, raw_reward=reward),
+            )
 
     algorithm = Dreamer(config, ShortImageEnv(), make_env=ScaledEnv)
     assert algorithm.evaluate(1, reward_key="raw_reward") == [6.0]
     np.testing.assert_allclose(algorithm.evaluate(1), [0.6])
 
 
-def test_resume_without_saved_replay_refills_before_updating(config, tmp_path, monkeypatch):
+def test_resume_without_saved_replay_refills_before_updating(
+    config, tmp_path, monkeypatch
+):
     config.sequence_length = 3
     config.batch_size = 1
     config.before_training_steps = 6
@@ -504,7 +620,10 @@ def test_resume_without_saved_replay_refills_before_updating(config, tmp_path, m
         algorithm.collect_episode()
     algorithm.save_ckpt(9)
     checkpoint = next(tmp_path.rglob("checkpoint_9.pt"))
-    restored = Dreamer(replace(config, path_to_checkpoint=str(checkpoint), save_replay_buffer=True), ShortImageEnv())
+    restored = Dreamer(
+        replace(config, path_to_checkpoint=str(checkpoint), save_replay_buffer=True),
+        ShortImageEnv(),
+    )
     assert restored.replay_buffer.size == 0
     original_get_action = restored.actor.get_action
 

@@ -19,8 +19,12 @@ def test_flatten_preserves_features_order_and_original_state(shape):
     assert state.deterministic.shape == (*shape, 4)
     assert state.stochastic.shape == (*shape, 2)
     torch.testing.assert_close(flat.deterministic[0], torch.arange(4))
-    torch.testing.assert_close(flat.deterministic[-1], torch.arange((count - 1) * 4, count * 4))
-    torch.testing.assert_close(flat.stochastic[-1], torch.arange((count - 1) * 2, count * 2))
+    torch.testing.assert_close(
+        flat.deterministic[-1], torch.arange((count - 1) * 4, count * 4)
+    )
+    torch.testing.assert_close(
+        flat.stochastic[-1], torch.arange((count - 1) * 2, count * 2)
+    )
 
 
 def test_flatten_handles_noncontiguous_states():

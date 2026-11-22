@@ -12,6 +12,7 @@ import signal, pdb
 import os
 import tempfile
 import os
+
 os.environ["WANDB_SILENT"] = "true"
 
 signal.signal(signal.SIGUSR1, lambda s, f: pdb.set_trace())
@@ -107,7 +108,9 @@ class Logger:
 
         temporary_path = None
         try:
-            with tempfile.NamedTemporaryFile(dir=Path(path).parent, suffix=".tmp", delete=False) as temporary:
+            with tempfile.NamedTemporaryFile(
+                dir=Path(path).parent, suffix=".tmp", delete=False
+            ) as temporary:
                 temporary_path = temporary.name
                 torch.save(dict_to_save, temporary)
             os.replace(temporary_path, path)
@@ -127,7 +130,9 @@ class Logger:
 
     def load_checkpoint(self, path: str, networks: Dict[str, Any]) -> Dict[str, Any]:
         """Load a training checkpoint. Returns the checkpoint dict."""
-        checkpoint = torch.load(path, map_location=self.config.device, weights_only=False)
+        checkpoint = torch.load(
+            path, map_location=self.config.device, weights_only=False
+        )
         for key, item in networks.items():
             if hasattr(item, "state_dict"):
                 try:

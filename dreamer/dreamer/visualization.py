@@ -22,22 +22,40 @@ def reconstruct_replay(agent, num_frames=8):
     length = min(agent.config.sequence_length, len(episode["actions"]))
     model = agent.world_model
     parameter = next(model.parameters())
-    images = torch.as_tensor(episode["observations"][:length + 1], device=parameter.device, dtype=parameter.dtype).unsqueeze(0)
+    images = torch.as_tensor(
+        episode["observations"][: length + 1],
+        device=parameter.device,
+        dtype=parameter.dtype,
+    ).unsqueeze(0)
     if episode["observations"].dtype == np.uint8:
         images = images / 255.0
-    actions = torch.as_tensor(episode["actions"][:length], device=parameter.device, dtype=parameter.dtype).unsqueeze(0)
-    terminated = torch.as_tensor(episode["terminated"][:length], device=parameter.device).unsqueeze(0)
-    truncated = torch.as_tensor(episode["truncated"][:length], device=parameter.device).unsqueeze(0)
-    indices = torch.linspace(0, length - 1, min(num_frames, length), device=parameter.device).long()
+    actions = torch.as_tensor(
+        episode["actions"][:length], device=parameter.device, dtype=parameter.dtype
+    ).unsqueeze(0)
+    terminated = torch.as_tensor(
+        episode["terminated"][:length], device=parameter.device
+    ).unsqueeze(0)
+    truncated = torch.as_tensor(
+        episode["truncated"][:length], device=parameter.device
+    ).unsqueeze(0)
+    indices = torch.linspace(
+        0, length - 1, min(num_frames, length), device=parameter.device
+    ).long()
     training = model.training
-    cuda_devices = [parameter.device.index or 0] if parameter.device.type == "cuda" else []
+    cuda_devices = (
+        [parameter.device.index or 0] if parameter.device.type == "cuda" else []
+    )
     mps_rng = torch.mps.get_rng_state() if parameter.device.type == "mps" else None
     try:
         model.eval()
         with torch.random.fork_rng(devices=cuda_devices):
             torch.manual_seed(0)
-            states, _, _ = model.observe_sequence(images[:, :-1], actions, terminated, truncated, images[:, 1:])
-            selected = DreamerState(states.deterministic[:, indices], states.stochastic[:, indices])
+            states, _, _ = model.observe_sequence(
+                images[:, :-1], actions, terminated, truncated, images[:, 1:]
+            )
+            selected = DreamerState(
+                states.deterministic[:, indices], states.stochastic[:, indices]
+            )
             predictions = model.predict(selected)["reconstructions"]
             return make_reconstruction_grid(images[0, indices + 1], predictions[0])
     finally:
