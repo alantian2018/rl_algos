@@ -59,9 +59,9 @@ class CarRacingConfig(DreamerConfig):
     eval_episodes: int = 3
     video_log_freq: int = 10_000
     # how many start states to sample from the replay buffer
-    batch_size: int = 16
+    batch_size: int = 32
     # time horizon of how long each of those samples are
-    sequence_length: int = 32
+    sequence_length: int = 64
     device: str = "mps"
     save_freq: int = 10_000
     use_wandb: bool = True
