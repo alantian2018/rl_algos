@@ -138,11 +138,13 @@ class ObservationEncoder(nn.Module):
         super().__init__()
         # assume its a 2d image for now...
         self.nets = nn.Sequential(
-            nn.Conv2d(input_channels, 16, 5, 3),
+            nn.Conv2d(input_channels, 32, 5, 3),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 5, 2),
+            nn.Conv2d(32, 64, 5, 2),
             nn.ReLU(),
-            nn.Conv2d(16, 32, 3, 1),
+            nn.Conv2d(64, 64, 3, 1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, 1, padding=1),
             nn.ReLU(),
             nn.Flatten()
         )
@@ -151,10 +153,10 @@ class ObservationEncoder(nn.Module):
         with torch.no_grad():
             h1 = self.nets[:2](dummy)
             h2 = self.nets[2:4](h1)
-            h3 = self.nets[4:6](h2)
+            h3 = self.nets[4:-1](h2)
 
         self.h1_hw = h1.shape[-2:]
-        self.conv_shape = h3.shape[1:]  # (32, H3, W3)
+        self.conv_shape = h3.shape[1:]
         self.flat_size = h3[0].numel()
 
         print(f'flat_size for encoder is {self.flat_size}' )
@@ -187,10 +189,11 @@ class ObservationDecoder(nn.Module):
             nn.ReLU()
         )
 
-        self.deconv1 = nn.ConvTranspose2d(32, 16, 3, 1)
-        self.deconv2 = nn.ConvTranspose2d(16, 16, 5, 2)
+        self.deconv0 = nn.ConvTranspose2d(64, 64, 3, 1, padding=1)
+        self.deconv1 = nn.ConvTranspose2d(64, 64, 3, 1)
+        self.deconv2 = nn.ConvTranspose2d(64, 32, 5, 2)
         self.deconv3 = nn.ConvTranspose2d(
-            16, input_channels, 5, 3
+            32, input_channels, 5, 3
         )
 
     def forward(self, z):
@@ -199,9 +202,10 @@ class ObservationDecoder(nn.Module):
         x = self.proj(z)
         x = x.reshape(B, *self.conv_shape)
 
+        x = F.relu(self.deconv0(x))
         x = F.relu(self.deconv1(x))
         x = F.relu(self.deconv2(
-            x, output_size=(B, 16, *self.h1_hw)
+            x, output_size=(B, 32, *self.h1_hw)
         ))
         x = self.deconv3(
             x, output_size=(B, self.input_channels, *self.input_size)

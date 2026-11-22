@@ -27,7 +27,13 @@ class PixelPendulum(gymnasium.Wrapper):
         self.observation_space = gymnasium.spaces.Box(0, 255, (*image_size, 1), dtype=np.uint8)
 
     def pixels(self):
-        frame = self.env.render()
+        pendulum = self.env.unwrapped
+        last_u = pendulum.last_u
+        try:
+            pendulum.last_u = None
+            frame = self.env.render()
+        finally:
+            pendulum.last_u = last_u
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, self.image_size[::-1], interpolation=cv2.INTER_AREA)
         return frame[..., None]
@@ -77,12 +83,14 @@ class PendulumConfig(DreamerConfig):
 
     # this is kinda a misnomer, this is number of environment interactions. should probably change but ehhhhhhhhh
     total_train_steps: int = 2_000_000
-    eval_every: int = 200
+    reconstruction_log_freq: int = 500
+    eval_every: int = 500
     eval_episodes: int = 5
-    video_log_freq: int = 600
+    video_log_freq: int = 1000
     video_fps: int = 10
     action_repeat: int = 2
     reward_scale: float = 0.1
+
     num_threads: int = 4
 
 
