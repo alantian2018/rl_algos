@@ -42,6 +42,23 @@ class PixelCarRacing(gymnasium.Wrapper):
 
 @dataclass
 class CarRacingConfig(DreamerConfig):
+    # NOTE: uh this is a bit of a misnomer its actually number of env steps not train steps
+    total_train_steps: int = 2_000_000
+    reconstruction_log_freq: int = 2_000
+    eval_every: int = 5_000
+    eval_episodes: int = 3
+    video_log_freq: int = 10_000
+    # how many start states to sample from the replay buffer
+    batch_size: int = 16
+    # time horizon of how long each of those samples are
+    sequence_length: int = 32
+    device: str = "mps"
+    save_freq: int = 10_000
+    use_wandb: bool = True
+    # wandb_entity : str = 
+    # wandb_project : str = 
+
+
     exp_name: str = "carracing_pixels"
     obs_dim: tuple = (64, 64)
     obs_channels: int = 3
@@ -52,8 +69,6 @@ class CarRacingConfig(DreamerConfig):
     stochastic_dim: int = 30
     latent_obs_size: int = 256
     hidden_dim: int = 256
-    batch_size: int = 16
-    sequence_length: int = 32
     before_training_steps: int = 5_000
     train_steps_per_episode: int = 100
     replay_buffer_capacity: int = 100_000
@@ -68,15 +83,7 @@ class CarRacingConfig(DreamerConfig):
     continuation_weight: float = 10.0
     kl_weight: float = 0.1
     free_nats: float = 3.0
-    device: str = "mps"
-    use_wandb: bool = True
-    save_freq: int = 10_000
     log_freq: int = 1
-    total_train_steps: int = 2_000_000
-    reconstruction_log_freq: int = 2_000
-    eval_every: int = 5_000
-    eval_episodes: int = 3
-    video_log_freq: int = 10_000
     video_fps: int = 25
     action_repeat: int = 1
     reward_scale: float = 0.1
