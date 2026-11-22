@@ -6,8 +6,15 @@ from .utils import prepare_observation
 
 
 @torch.no_grad()
-def evaluate_policy(agent, num_episodes=5, seed=None, deterministic=True, reward_key=None,
-                    video_path=None, video_fps=30):
+def evaluate_policy(
+    agent,
+    num_episodes=5,
+    seed=None,
+    deterministic=True,
+    reward_key=None,
+    video_path=None,
+    video_fps=30,
+):
     if agent.make_env is None:
         raise ValueError("Evaluation requires a make_env factory")
     if num_episodes < 1:

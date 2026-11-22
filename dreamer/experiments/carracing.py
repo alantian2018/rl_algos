@@ -65,9 +65,8 @@ class CarRacingConfig(DreamerConfig):
     device: str = "mps"
     save_freq: int = 10_000
     use_wandb: bool = True
-    # wandb_entity : str = 
-    # wandb_project : str = 
-
+    # wandb_entity : str =
+    # wandb_project : str =
 
     exp_name: str = "carracing_pixels"
     obs_dim: tuple = (64, 64)

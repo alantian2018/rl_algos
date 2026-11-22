@@ -43,7 +43,7 @@ class Dreamer(BaseAlgorithm):
         if config.seed:
             torch.manual_seed(config.seed)
             env.action_space.seed(config.seed)
-            
+
         if world_model is None:
             world_model = WorldModel(
                 config.deterministic_dim,
