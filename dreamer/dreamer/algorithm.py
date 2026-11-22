@@ -247,7 +247,10 @@ class Dreamer(BaseAlgorithm):
             "actor_grad_norm": actor_grad_norm.detach(),
             "critic_grad_norm": critic_grad_norm.detach(),
             "actor_mean_abs": actor_info["mu"].abs().mean(),
+            "actor_mean": actor_info["mu"].mean(),
             "actor_std": actor_info["std"].mean(),
+            "action_mean": actions.detach().mean(),
+            "action_std": actions.detach().std(unbiased=False),
         }
         if self.actor.squash_actions:
             normalized_actions = 2 * (entropy_actions.detach() - self.actor.action_low) / (self.actor.action_high - self.actor.action_low) - 1
@@ -298,7 +301,6 @@ class Dreamer(BaseAlgorithm):
                         if states.deterministic.shape[0] > 0:
                          
                             rollout = self.imagine_rollout(states, self.config.imagination_horizon)
-                           
                             behavior_metrics = self.update_actor_critic(*rollout)
                             metrics.update(behavior_metrics)
                         for key, value in metrics.items():

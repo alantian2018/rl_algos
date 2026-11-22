@@ -83,34 +83,11 @@ class PendulumConfig(DreamerConfig):
 
 
 @torch.no_grad()
-def evaluate(agent, config, policy="actor", video_path=None):
-    if policy == "actor":
-        return agent.evaluate(config.eval_episodes, reward_key="raw_reward", video_path=video_path, video_fps=config.video_fps)
-    returns = []
-    env = PixelPendulum(config.obs_dim, config.action_repeat, config.reward_scale)
-    try:
-        with torch.random.fork_rng(devices=[]):
-            for episode in range(config.eval_episodes):
-                seed = 10_000 + episode
-                torch.manual_seed(seed)
-                env.action_space.seed(seed)
-                obs, _ = env.reset(seed=seed)
-                total = 0.0
-                done = False
-                while not done:
-                    if policy == "random":
-                        action = env.action_space.sample()
-                    elif policy == "zero":
-                        action = np.zeros(config.action_dim, dtype=np.float32)
-                    else:
-                        raise ValueError("Unknown evaluation policy")
-                    obs, _, terminated, truncated, info = env.step(action)
-                    total += info["raw_reward"]
-                    done = terminated or truncated
-                returns.append(float(total))
-    finally:
-        env.close()
-    return returns
+def evaluate(agent, config, video_path=None):
+    return agent.evaluate(
+        config.eval_episodes, reward_key="raw_reward",
+        video_path=video_path, video_fps=config.video_fps,
+    )
 
 
 @draccus.wrap()
@@ -123,17 +100,17 @@ def main(config: PendulumConfig):
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "config.json").write_text(json.dumps(asdict(config), indent=2))
     initial_video = run_dir / "videos" / f"eval_{agent.env_steps}.mp4" if config.video_log_freq is not None else None
-    results = {
-        "random": evaluate(agent, config, "random"),
-        "zero": evaluate(agent, config, "zero"),
-        "initial_actor": evaluate(agent, config, video_path=initial_video),
-        "evaluations": [],
-    }
+    initial_scores = evaluate(agent, config, video_path=initial_video)
+    initial_mean = float(np.mean(initial_scores))
+    results = {"evaluations": [{
+        "step": agent.env_steps, "returns": initial_scores, "mean": initial_mean,
+    }]}
+    (run_dir / "results.json").write_text(json.dumps(results, indent=2))
     original_log = agent.logger.log
-    baseline_metrics = {f"eval/baseline_{key}": float(np.mean(value)) for key, value in results.items() if key != "evaluations"}
+    initial_metrics = {"eval/raw_return_mean": initial_mean}
     if initial_video is not None and agent.logger.use_wandb:
-        baseline_metrics["eval/video"] = wandb.Video(str(initial_video), fps=config.video_fps, format="mp4")
-    original_log(baseline_metrics, step=agent.env_steps)
+        initial_metrics["eval/video"] = wandb.Video(str(initial_video), fps=config.video_fps, format="mp4")
+    original_log(initial_metrics, step=agent.env_steps)
     next_eval = agent.env_steps + config.eval_every
     next_video = agent.env_steps + config.video_log_freq if config.video_log_freq is not None else None
 
