@@ -20,7 +20,7 @@ class BaseAlgorithm:
         save_dir = None
 
         if config.save_dir:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             save_dir = f"{config.save_dir}/{timestamp}"
 
         dummy_obs, _ = env.reset()

@@ -9,6 +9,8 @@ from torch import nn
 import termcolor
 from collections import deque
 import signal, pdb
+import os
+import tempfile
 
 signal.signal(signal.SIGUSR1, lambda s, f: pdb.set_trace())
 
@@ -89,8 +91,7 @@ class Logger:
         path = f"{self.save_dir}/checkpoint_{step}.pt"
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-        if step not in networks:
-            networks["step"] = step
+        networks = {**networks, "step": step}
         if self.use_wandb:
             networks["wandb_id"] = wandb.run.id
 
@@ -102,8 +103,16 @@ class Logger:
             else:
                 dict_to_save[key] = item
 
-        torch.save(dict_to_save, path)
-        print(termcolor.colored(f"Saved checkpoint to {path}", "green"))
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=Path(path).parent, suffix=".tmp", delete=False) as temporary:
+                temporary_path = temporary.name
+                torch.save(dict_to_save, temporary)
+            os.replace(temporary_path, path)
+        finally:
+            if temporary_path is not None:
+                Path(temporary_path).unlink(missing_ok=True)
+        print(termcolor.colored(f"Saved checkpoint to {path}", "green"), flush=True)
 
     def maybe_save_checkpoint(self, step: int, networks: Dict):
         """Save checkpoint if it's time to do so."""
@@ -116,7 +125,7 @@ class Logger:
 
     def load_checkpoint(self, path: str, networks: Dict[str, Any]) -> Dict[str, Any]:
         """Load a training checkpoint. Returns the checkpoint dict."""
-        checkpoint = torch.load(path, weights_only=False)
+        checkpoint = torch.load(path, map_location=self.config.device, weights_only=False)
         for key, item in networks.items():
             if hasattr(item, "state_dict"):
                 try:
@@ -125,7 +134,7 @@ class Logger:
                     raise ValueError(termcolor.colored(f"Failed to load {key}", "red"))
             else:
 
-                networks[key] = checkpoint[key]
+                networks[key] = checkpoint.get(key, item)
 
         print(
             termcolor.colored(
