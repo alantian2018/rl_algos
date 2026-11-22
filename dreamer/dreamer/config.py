@@ -39,7 +39,6 @@ class DreamerConfig(GlobalConfig):
     before_training_steps: int = 5_000
     train_steps_per_episode: int = 100  # updates after collecting a complete episode
     save_replay_buffer: bool = False
-    seed: int = 0
     log_freq: int = 10  # gradient updates
     reconstruction_log_freq: int | None = 2_000
     reconstruction_frames: int = 8

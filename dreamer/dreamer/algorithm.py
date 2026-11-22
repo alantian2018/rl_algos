@@ -35,8 +35,10 @@ class Dreamer(BaseAlgorithm):
         super().__init__(config, env, make_env)
         self.make_env = make_env
 
-        torch.manual_seed(config.seed)
-        env.action_space.seed(config.seed)
+        if config.seed:
+            torch.manual_seed(config.seed)
+            env.action_space.seed(config.seed)
+            
         if world_model is None:
             world_model = WorldModel(
                 config.deterministic_dim, config.stochastic_dim, config.action_dim,

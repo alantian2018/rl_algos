@@ -6,7 +6,7 @@ from .utils import prepare_observation
 
 
 @torch.no_grad()
-def evaluate_policy(agent, num_episodes=5, seed=10_000, deterministic=True, reward_key=None,
+def evaluate_policy(agent, num_episodes=5, seed=None, deterministic=True, reward_key=None,
                     video_path=None, video_fps=30):
     if agent.make_env is None:
         raise ValueError("Evaluation requires a make_env factory")
@@ -30,8 +30,12 @@ def evaluate_policy(agent, num_episodes=5, seed=10_000, deterministic=True, rewa
         agent.actor.eval()
         with torch.random.fork_rng(devices=cuda_devices):
             for episode in range(num_episodes):
-                torch.manual_seed(seed + episode)
-                obs, _ = env.reset(seed=seed + episode)
+                if seed is not None:
+                    torch.manual_seed(seed + episode)
+                    obs, _ = env.reset(seed=seed + episode)
+                else:
+                    obs, _ = env.reset()
+
                 state = agent.world_model.initial_state(1)
                 previous_action = state.deterministic.new_zeros(1, agent.config.action_dim)
                 total = 0.0
