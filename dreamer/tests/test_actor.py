@@ -21,10 +21,16 @@ def test_log_probability_matches_torch_transformed_distribution():
     state = DreamerState(torch.randn(8, 16), torch.randn(8, 8))
     actions, log_prob, _ = actor.get_action(state)
     scale = (actor.action_high - actor.action_low) / 2
-    expected = TransformedDistribution(actor(state), [
-        TanhTransform(), AffineTransform(actor.action_low + scale, scale),
-    ])
-    torch.testing.assert_close(log_prob, expected.log_prob(actions).sum(-1, keepdim=True))
+    expected = TransformedDistribution(
+        actor(state),
+        [
+            TanhTransform(),
+            AffineTransform(actor.action_low + scale, scale),
+        ],
+    )
+    torch.testing.assert_close(
+        log_prob, expected.log_prob(actions).sum(-1, keepdim=True)
+    )
 
 
 def test_unsquashed_sampling_matches_base_normal():
@@ -36,7 +42,9 @@ def test_unsquashed_sampling_matches_base_normal():
     torch.manual_seed(2)
     action, log_prob, _ = actor.get_action(state)
     torch.testing.assert_close(action, expected)
-    torch.testing.assert_close(log_prob, distribution.log_prob(expected).sum(-1, keepdim=True))
+    torch.testing.assert_close(
+        log_prob, distribution.log_prob(expected).sum(-1, keepdim=True)
+    )
 
 
 @pytest.mark.parametrize("squash", [False, True])
@@ -86,7 +94,9 @@ def test_fixed_action_log_probability_matches_sampling(squash):
     log_probs = actor.get_log_prob(states, actions)
     torch.testing.assert_close(log_probs, expected, atol=1e-4, rtol=1e-4)
     log_probs.mean().backward()
-    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in actor.parameters())
+    assert all(
+        p.grad is not None and torch.isfinite(p.grad).all() for p in actor.parameters()
+    )
 
 
 def test_reinforce_log_prob_treats_sampled_action_as_fixed():
@@ -110,16 +120,23 @@ def test_saved_raw_actions_preserve_saturated_log_probs_and_score_gradients():
     states = DreamerState(torch.zeros(8, 16), torch.zeros(8, 8))
     with torch.no_grad():
         actions, expected, info = actor.get_action(states)
-    torch.testing.assert_close(actions, actor.action_low.new_tensor([-2.0, 1.0]).expand_as(actions))
+    torch.testing.assert_close(
+        actions, actor.action_low.new_tensor([-2.0, 1.0]).expand_as(actions)
+    )
     raw_actions = info["raw_action"].clone().requires_grad_()
     log_probs = actor.get_log_prob(states, actions, raw_actions=raw_actions)
     torch.testing.assert_close(log_probs, expected)
     distribution = actor(states)
-    expected_gradient = ((raw_actions.detach() - distribution.loc.detach()) / distribution.scale.detach().square()).sum(0)
+    expected_gradient = (
+        (raw_actions.detach() - distribution.loc.detach())
+        / distribution.scale.detach().square()
+    ).sum(0)
     log_probs.sum().backward()
     torch.testing.assert_close(actor.mu_head.bias.grad, expected_gradient)
     assert raw_actions.grad is None
-    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in actor.parameters())
+    assert all(
+        p.grad is not None and torch.isfinite(p.grad).all() for p in actor.parameters()
+    )
 
 
 def test_actor_std_is_bounded_without_changing_mean():

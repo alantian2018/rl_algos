@@ -3,7 +3,6 @@ import draccus
 from dataclasses import dataclass
 from sac import Policy, Qfunction, MLPEncoder
 from sac import SAC, SACConfig
- 
 
 
 def make_ant_env(render_mode=None):
@@ -40,8 +39,12 @@ def main(config: AntSACConfig):
     policy_encoder = MLPEncoder(
         state_dim=config.state_dim * config.frame_stack, hidden_dim=config.hidden_dim
     )
-    qf1_encoder = MLPEncoder(state_dim=config.state_dim * config.frame_stack, hidden_dim=config.hidden_dim)
-    qf2_encoder = MLPEncoder(state_dim=config.state_dim * config.frame_stack, hidden_dim=config.hidden_dim)
+    qf1_encoder = MLPEncoder(
+        state_dim=config.state_dim * config.frame_stack, hidden_dim=config.hidden_dim
+    )
+    qf2_encoder = MLPEncoder(
+        state_dim=config.state_dim * config.frame_stack, hidden_dim=config.hidden_dim
+    )
 
     policy = Policy(
         encoder=policy_encoder,

@@ -7,33 +7,61 @@ from .networks import RewardDecoder, ContinueDecoder, ObservationHandler, Dreame
 
 def sobel_edges(images):
     channels = images.shape[-3]
-    kernels = images.new_tensor([
-        [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
-        [[-1, -2, -1], [0, 0, 0], [1, 2, 1]],
-    ]).unsqueeze(1).repeat(channels, 1, 1, 1) / 8
+    kernels = (
+        images.new_tensor(
+            [
+                [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+                [[-1, -2, -1], [0, 0, 0], [1, 2, 1]],
+            ]
+        )
+        .unsqueeze(1)
+        .repeat(channels, 1, 1, 1)
+        / 8
+    )
     flat = images.reshape(-1, *images.shape[-3:])
-    edges = F.conv2d(F.pad(flat, (1, 1, 1, 1), mode="replicate"), kernels, groups=channels)
+    edges = F.conv2d(
+        F.pad(flat, (1, 1, 1, 1), mode="replicate"), kernels, groups=channels
+    )
     return edges.reshape(*images.shape[:-3], 2 * channels, *images.shape[-2:])
 
 
 class WorldModel(nn.Module):
-    def __init__(self, deterministic_dim, stochastic_dim, action_dim,  obs_dim, obs_channels, latent_obs_size, hidden_dim,
-                 loss_weights=(1.0, 1.0, 10.0, 1.0), free_nats=0.0, edge_weight=0.0):
+    def __init__(
+        self,
+        deterministic_dim,
+        stochastic_dim,
+        action_dim,
+        obs_dim,
+        obs_channels,
+        latent_obs_size,
+        hidden_dim,
+        loss_weights=(1.0, 1.0, 10.0, 1.0),
+        free_nats=0.0,
+        edge_weight=0.0,
+    ):
         super().__init__()
 
         hidden_state_size = deterministic_dim + stochastic_dim
-        
+
         self.deterministic_dim = deterministic_dim
         self.stochastic_dim = stochastic_dim
         self.loss_weights = loss_weights
         self.free_nats = free_nats
         self.edge_weight = edge_weight
-        self.rssm = RSSM(deterministic_dim, stochastic_dim, action_dim, hidden_dim, latent_obs_size)
-        self.obs_handler = ObservationHandler(obs_dim, obs_channels, latent_obs_size, hidden_state_size, hidden_dim)
-        self.reward_decoder = RewardDecoder(deterministic_dim, stochastic_dim, hidden_dim)
-        self.continue_decoder = ContinueDecoder(deterministic_dim, stochastic_dim, hidden_dim)
+        self.rssm = RSSM(
+            deterministic_dim, stochastic_dim, action_dim, hidden_dim, latent_obs_size
+        )
+        self.obs_handler = ObservationHandler(
+            obs_dim, obs_channels, latent_obs_size, hidden_state_size, hidden_dim
+        )
+        self.reward_decoder = RewardDecoder(
+            deterministic_dim, stochastic_dim, hidden_dim
+        )
+        self.continue_decoder = ContinueDecoder(
+            deterministic_dim, stochastic_dim, hidden_dim
+        )
 
-    def observe_step(self, obs, previous_state : DreamerState, previous_action):
+    def observe_step(self, obs, previous_state: DreamerState, previous_action):
         encoded = self.obs_handler.encode(obs)
         return self.rssm.observe(previous_state, previous_action, encoded)
 
@@ -45,22 +73,35 @@ class WorldModel(nn.Module):
             stochastic=reference.new_zeros(batch_size, self.stochastic_dim),
         )
 
-    def observe_sequence(self, obs, actions, terminated, truncated, next_obs, initial_state=None):
+    def observe_sequence(
+        self, obs, actions, terminated, truncated, next_obs, initial_state=None
+    ):
         batch_size, sequence_length = obs.shape[:2]
         if sequence_length < 1 or next_obs.shape != obs.shape:
-            raise ValueError("obs and next_obs must have matching nonempty sequence shapes")
+            raise ValueError(
+                "obs and next_obs must have matching nonempty sequence shapes"
+            )
         if terminated.shape == (batch_size, sequence_length, 1):
             terminated = terminated[..., 0]
         if truncated.shape == (batch_size, sequence_length, 1):
             truncated = truncated[..., 0]
         if actions.shape[:2] != (batch_size, sequence_length):
             raise ValueError("actions must match observation batch/time dimensions")
-        if terminated.shape != (batch_size, sequence_length) or truncated.shape != (batch_size, sequence_length):
-            raise ValueError("terminated and truncated must have shape [B, T] or [B, T, 1]")
-        episode_ends = terminated.to(device=actions.device, dtype=torch.bool) | truncated.to(device=actions.device, dtype=torch.bool)
+        if terminated.shape != (batch_size, sequence_length) or truncated.shape != (
+            batch_size,
+            sequence_length,
+        ):
+            raise ValueError(
+                "terminated and truncated must have shape [B, T] or [B, T, 1]"
+            )
+        episode_ends = terminated.to(
+            device=actions.device, dtype=torch.bool
+        ) | truncated.to(device=actions.device, dtype=torch.bool)
         encoded = self.obs_handler.encode(next_obs.flatten(0, 1))
         encoded = encoded.reshape(batch_size, sequence_length, -1)
-        state = self.initial_state(batch_size) if initial_state is None else initial_state
+        state = (
+            self.initial_state(batch_size) if initial_state is None else initial_state
+        )
         zero_action = actions.new_zeros(batch_size, actions.shape[-1])
         state, _, _ = self.observe_step(obs[:, 0], state, zero_action)
         deterministic, stochastic = [], []
@@ -76,7 +117,9 @@ class WorldModel(nn.Module):
                         obs[:, t], self.initial_state(batch_size), zero_action
                     )
                     state = DreamerState(
-                        torch.where(reset, reset_state.deterministic, state.deterministic),
+                        torch.where(
+                            reset, reset_state.deterministic, state.deterministic
+                        ),
                         torch.where(reset, reset_state.stochastic, state.stochastic),
                     )
 
@@ -123,8 +166,20 @@ class WorldModel(nn.Module):
         continuations = self.continue_decoder(next_state).probs
         return next_state, rewards, continuations
 
-    def loss(self, obs, actions, rewards, terminated, truncated, next_obs, initial_state=None, prediction_mask=None):
-        states, priors, post = self.observe_sequence(obs, actions, terminated, truncated, next_obs, initial_state=initial_state)
+    def loss(
+        self,
+        obs,
+        actions,
+        rewards,
+        terminated,
+        truncated,
+        next_obs,
+        initial_state=None,
+        prediction_mask=None,
+    ):
+        states, priors, post = self.observe_sequence(
+            obs, actions, terminated, truncated, next_obs, initial_state=initial_state
+        )
 
         # dynamics loss between the prior and post
         kl = torch.distributions.kl_divergence(post, priors)  # [B, T, stochastic_dim]
@@ -133,9 +188,13 @@ class WorldModel(nn.Module):
 
         predictions = self.predict(states, decode_obs=True)
 
-        #reconstruction loss 
-        reconstructions, pred_rewards, continuations = predictions['reconstructions'], predictions['rewards'], predictions['continuations']
-        sq_error =  0.5 * ((reconstructions - next_obs) ** 2)
+        # reconstruction loss
+        reconstructions, pred_rewards, continuations = (
+            predictions["reconstructions"],
+            predictions["rewards"],
+            predictions["continuations"],
+        )
+        sq_error = 0.5 * ((reconstructions - next_obs) ** 2)
         image_loss = sq_error.sum((-3, -2, -1))
         L_reconstruction = image_loss.mean()
         L_edge = L_reconstruction.new_zeros(())
@@ -143,23 +202,31 @@ class WorldModel(nn.Module):
             edge_error = sobel_edges(reconstructions) - sobel_edges(next_obs)
             L_edge = 0.5 * edge_error.square().sum((-3, -2, -1)).mean()
 
-
         targets = 1.0 - terminated.to(continuations.logits)
         if prediction_mask is None:
             prediction_mask = torch.ones_like(pred_rewards[..., 0], dtype=torch.bool)
         if prediction_mask.shape != pred_rewards.shape[:2]:
             raise ValueError("prediction_mask must have shape [B, T]")
-        valid = prediction_mask.to(device=pred_rewards.device, dtype=torch.bool).unsqueeze(-1)
+        valid = prediction_mask.to(
+            device=pred_rewards.device, dtype=torch.bool
+        ).unsqueeze(-1)
         count = valid.sum().clamp_min(1)
         L_rewards = 0.5 * (pred_rewards[valid] - rewards[valid]).square().sum() / count
-        L_continuation = F.binary_cross_entropy_with_logits(
-            continuations.logits[valid], targets[valid], reduction="sum"
-        ) / count
+        L_continuation = (
+            F.binary_cross_entropy_with_logits(
+                continuations.logits[valid], targets[valid], reduction="sum"
+            )
+            / count
+        )
 
-        reconstruction_weight, reward_weight, continuation_weight, kl_weight = self.loss_weights
+        reconstruction_weight, reward_weight, continuation_weight, kl_weight = (
+            self.loss_weights
+        )
         total_loss = (
-            reconstruction_weight * L_reconstruction + reward_weight * L_rewards
-            + continuation_weight * L_continuation + kl_weight * L_kl
+            reconstruction_weight * L_reconstruction
+            + reward_weight * L_rewards
+            + continuation_weight * L_continuation
+            + kl_weight * L_kl
             + self.edge_weight * L_edge
         )
         metrics = {
@@ -171,18 +238,24 @@ class WorldModel(nn.Module):
             "raw_kl": raw_kl.detach(),
         }
         with torch.no_grad():
-            metrics.update({
-                "prior_mean_variation": priors.loc.std(dim=1, correction=0).mean(),
-                "posterior_mean_variation": post.loc.std(dim=1, correction=0).mean(),
-                "prior_std": priors.scale.mean(),
-                "posterior_std": post.scale.mean(),
-                "deterministic_state_variation": states.deterministic.std(dim=1, correction=0).mean(),
-                "stochastic_state_variation": states.stochastic.std(dim=1, correction=0).mean(),
-                "reconstruction_variation": reconstructions.std(dim=1, correction=0).mean(),
-                "observation_variation": next_obs.std(dim=1, correction=0).mean(),
-            })
+            metrics.update(
+                {
+                    "prior_mean_variation": priors.loc.std(dim=1, correction=0).mean(),
+                    "posterior_mean_variation": post.loc.std(
+                        dim=1, correction=0
+                    ).mean(),
+                    "prior_std": priors.scale.mean(),
+                    "posterior_std": post.scale.mean(),
+                    "deterministic_state_variation": states.deterministic.std(
+                        dim=1, correction=0
+                    ).mean(),
+                    "stochastic_state_variation": states.stochastic.std(
+                        dim=1, correction=0
+                    ).mean(),
+                    "reconstruction_variation": reconstructions.std(
+                        dim=1, correction=0
+                    ).mean(),
+                    "observation_variation": next_obs.std(dim=1, correction=0).mean(),
+                }
+            )
         return total_loss, metrics, states
-   
-
-
-

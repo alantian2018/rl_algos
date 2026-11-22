@@ -105,7 +105,6 @@ class SAC(BaseAlgorithm):
             "target_qf2": self.target_qf2,
             "policy": self.policy,
             "policy_optimizer": self.optimizer_policy,
-         
         }
         if self.config.save_replay_buffer:
             networks["replay_buffer"] = self.replay_buffer
@@ -279,7 +278,11 @@ class SAC(BaseAlgorithm):
                 qf2_loss_total += qf2_loss.item()
                 policy_loss_total += policy_loss.item()
 
-            if steps_sampled % (self.config.log_freq * self.config.collect_rollout_steps) == 0:
+            if (
+                steps_sampled
+                % (self.config.log_freq * self.config.collect_rollout_steps)
+                == 0
+            ):
                 metrics = {
                     "qf1_loss": qf1_loss_total / self.config.gradient_step_ratio,
                     "qf2_loss": qf2_loss_total / self.config.gradient_step_ratio,
@@ -287,11 +290,11 @@ class SAC(BaseAlgorithm):
                     "alpha": self.alpha,
                 }
                 self.logger.log_training(metrics, step=steps_sampled)
-           
-            self.logger.maybe_save_checkpoint(step=steps_sampled, networks=self._get_networks())
+
+            self.logger.maybe_save_checkpoint(
+                step=steps_sampled, networks=self._get_networks()
+            )
 
         pbar.close()
-        self.logger.save_checkpoint(
-            step=steps_sampled, networks=self._get_networks()
-        )
+        self.logger.save_checkpoint(step=steps_sampled, networks=self._get_networks())
         self.logger.finish()

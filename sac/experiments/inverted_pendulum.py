@@ -5,10 +5,10 @@ from sac import Policy, Qfunction, MLPEncoder
 from sac import SAC, SACConfig
 
 
- 
-
 def make_pendulum_env(render_mode=None):
-    env = gymnasium.make('InvertedPendulum-v5', reset_noise_scale=0.1, render_mode=render_mode)
+    env = gymnasium.make(
+        "InvertedPendulum-v5", reset_noise_scale=0.1, render_mode=render_mode
+    )
     return env
 
 

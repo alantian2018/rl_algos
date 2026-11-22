@@ -52,7 +52,10 @@ class DreamerConfig(GlobalConfig):
             raise ValueError("edge_weight must be finite and nonnegative")
         if self.action_dim < 1:
             raise ValueError("action_dim must be positive")
-        if len(self.action_low) != self.action_dim or len(self.action_high) != self.action_dim:
+        if (
+            len(self.action_low) != self.action_dim
+            or len(self.action_high) != self.action_dim
+        ):
             raise ValueError("action bounds must have length action_dim")
         for low, high in zip(self.action_low, self.action_high):
             if not low < high:
@@ -67,8 +70,13 @@ class DreamerConfig(GlobalConfig):
             raise ValueError("training step counts must be nonnegative")
         if self.log_freq < 1 or self.imagination_horizon < 1:
             raise ValueError("log_freq and imagination_horizon must be positive")
-        if self.reconstruction_frames < 1 or (self.reconstruction_log_freq is not None and self.reconstruction_log_freq < 1):
-            raise ValueError("reconstruction_frames and enabled reconstruction_log_freq must be positive")
+        if self.reconstruction_frames < 1 or (
+            self.reconstruction_log_freq is not None
+            and self.reconstruction_log_freq < 1
+        ):
+            raise ValueError(
+                "reconstruction_frames and enabled reconstruction_log_freq must be positive"
+            )
 
         if self.save_dir is None:
             self.save_dir = f"dreamer/checkpoints/{self.exp_name}"

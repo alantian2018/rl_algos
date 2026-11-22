@@ -20,19 +20,25 @@ def test_carracing_pixels_rewards_and_time_limit(action_repeat):
         raw_obs, _ = reference.reset(seed=4)
         assert obs.shape == (64, 64, 3)
         assert obs.dtype == np.uint8
-        np.testing.assert_array_equal(obs, cv2.resize(raw_obs, (64, 64), interpolation=cv2.INTER_AREA))
+        np.testing.assert_array_equal(
+            obs, cv2.resize(raw_obs, (64, 64), interpolation=cv2.INTER_AREA)
+        )
         action = np.array([0.1, 0.5, 0.0], dtype=np.float32)
         done = False
         while not done:
             expected_reward = 0.0
             for _ in range(action_repeat):
-                raw_obs, reward, expected_terminated, expected_truncated, _ = reference.step(action)
+                raw_obs, reward, expected_terminated, expected_truncated, _ = (
+                    reference.step(action)
+                )
                 expected_reward += reward
                 if expected_terminated or expected_truncated:
                     break
             obs, reward, terminated, truncated, info = env.step(action)
             assert env.observation_space.contains(obs)
-            np.testing.assert_array_equal(obs, cv2.resize(raw_obs, (64, 64), interpolation=cv2.INTER_AREA))
+            np.testing.assert_array_equal(
+                obs, cv2.resize(raw_obs, (64, 64), interpolation=cv2.INTER_AREA)
+            )
             np.testing.assert_allclose(info["raw_reward"], expected_reward)
             np.testing.assert_allclose(reward, expected_reward * 0.1)
             assert (terminated, truncated) == (expected_terminated, expected_truncated)
@@ -66,14 +72,30 @@ def test_carracing_experiment_trains_and_logs_media(tmp_path, monkeypatch):
 
     monkeypatch.setattr(carracing, "PixelCarRacing", short_env)
     config = CarRacingConfig(
-        device="cpu", use_wandb=False, save_dir=str(tmp_path), save_freq=None,
-        total_train_steps=1, before_training_steps=0, train_steps_per_episode=1,
-        sequence_length=3, batch_size=1, imagination_horizon=2,
-        deterministic_dim=16, stochastic_dim=8, latent_obs_size=12, hidden_dim=32,
-        eval_episodes=1, video_log_freq=1, reconstruction_log_freq=1, num_threads=1,
+        device="cpu",
+        use_wandb=False,
+        save_dir=str(tmp_path),
+        save_freq=None,
+        total_train_steps=1,
+        before_training_steps=0,
+        train_steps_per_episode=1,
+        sequence_length=3,
+        batch_size=1,
+        imagination_horizon=2,
+        deterministic_dim=16,
+        stochastic_dim=8,
+        latent_obs_size=12,
+        hidden_dim=32,
+        eval_episodes=1,
+        video_log_freq=1,
+        reconstruction_log_freq=1,
+        num_threads=1,
     )
     carracing.main.__wrapped__(config)
-    rows = [json.loads(line) for line in next(tmp_path.rglob("training.jsonl")).read_text().splitlines()]
+    rows = [
+        json.loads(line)
+        for line in next(tmp_path.rglob("training.jsonl")).read_text().splitlines()
+    ]
     assert rows[-1]["train/gradient_steps"] == 1
     assert "train/actor_loss" in rows[-1]
     assert "train/edge_loss" in rows[-1]

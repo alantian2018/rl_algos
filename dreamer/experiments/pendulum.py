@@ -18,7 +18,9 @@ class PixelPendulum(gymnasium.Wrapper):
         self.image_size = image_size
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
-        self.observation_space = gymnasium.spaces.Box(0, 255, (*image_size, 1), dtype=np.uint8)
+        self.observation_space = gymnasium.spaces.Box(
+            0, 255, (*image_size, 1), dtype=np.uint8
+        )
 
     def pixels(self):
         pendulum = self.env.unwrapped
@@ -44,7 +46,13 @@ class PixelPendulum(gymnasium.Wrapper):
             if terminated or truncated:
                 break
         info = dict(info, raw_reward=raw_reward)
-        return self.pixels(), raw_reward * self.reward_scale, terminated, truncated, info
+        return (
+            self.pixels(),
+            raw_reward * self.reward_scale,
+            terminated,
+            truncated,
+            info,
+        )
 
 
 @dataclass
@@ -97,7 +105,9 @@ class PendulumConfig(DreamerConfig):
 
 @draccus.wrap()
 def main(config: PendulumConfig):
-    make_env = partial(PixelPendulum, config.obs_dim, config.action_repeat, config.reward_scale)
+    make_env = partial(
+        PixelPendulum, config.obs_dim, config.action_repeat, config.reward_scale
+    )
     run_experiment(config, make_env)
 
 

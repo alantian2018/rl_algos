@@ -6,7 +6,9 @@ from dreamer.dreamer.replaybuffer import ReplayBuffer
 
 def episode(length=3, truncated=False):
     return {
-        "observations": np.arange((length + 1) * 2, dtype=np.uint8).reshape(length + 1, 2),
+        "observations": np.arange((length + 1) * 2, dtype=np.uint8).reshape(
+            length + 1, 2
+        ),
         "actions": np.arange(length, dtype=np.float32).reshape(length, 1),
         "rewards": np.arange(length, dtype=np.float32) + 10,
         "terminated": np.array([False] * (length - 1) + [not truncated]),
@@ -52,7 +54,17 @@ def test_capacity_evicts_whole_oldest_episodes():
     assert replay.episodes[0]["truncated"][-1]
 
 
-@pytest.mark.parametrize("problem", ["missing_final_obs", "early_done", "unfinished", "reward_shape", "action_shape", "oversized"])
+@pytest.mark.parametrize(
+    "problem",
+    [
+        "missing_final_obs",
+        "early_done",
+        "unfinished",
+        "reward_shape",
+        "action_shape",
+        "oversized",
+    ],
+)
 def test_invalid_episode_does_not_modify_replay(problem):
     replay = ReplayBuffer(capacity=5)
     replay.add_episode(**episode(2))
@@ -89,12 +101,16 @@ def test_full_episode_sample_aligns_terminal_targets(truncated):
     assert batch["observations"].shape == (2, 3, 2)
     assert batch["actions"].shape == (2, 3, 1)
     for row in range(2):
-        np.testing.assert_array_equal(batch["observations"][row], data["observations"][:-1])
+        np.testing.assert_array_equal(
+            batch["observations"][row], data["observations"][:-1]
+        )
         np.testing.assert_array_equal(batch["actions"][row], data["actions"])
         for key in ("rewards", "terminated", "truncated"):
             assert batch[key].shape == (2, 3, 1)
             np.testing.assert_array_equal(batch[key][row, :, 0], data[key])
-        np.testing.assert_array_equal(batch["next_observations"][row], data["observations"][1:])
+        np.testing.assert_array_equal(
+            batch["next_observations"][row], data["observations"][1:]
+        )
     assert "dones" not in batch
     assert "prediction_mask" not in batch
 
@@ -115,8 +131,13 @@ def test_windows_are_contiguous_and_never_cross_episodes():
         offset = 0 if start < 50 else 50
         transition = (int(start) - offset) // 2
         np.testing.assert_array_equal(np.diff(batch["observations"][row, :, 0]), [2])
-        np.testing.assert_array_equal(batch["actions"][row, :, 0], np.arange(transition, transition + 2) + offset)
-        np.testing.assert_array_equal(batch["rewards"][row, :, 0], np.arange(transition, transition + 2) + offset + 10)
+        np.testing.assert_array_equal(
+            batch["actions"][row, :, 0], np.arange(transition, transition + 2) + offset
+        )
+        np.testing.assert_array_equal(
+            batch["rewards"][row, :, 0],
+            np.arange(transition, transition + 2) + offset + 10,
+        )
 
 
 def test_sampling_skips_short_episodes_and_returns_independent_arrays():
@@ -128,7 +149,9 @@ def test_sampling_skips_short_episodes_and_returns_independent_arrays():
     np.testing.assert_array_equal(batch["observations"][0], data["observations"][:-1])
     for value in batch.values():
         value[...] = 0
-    np.testing.assert_array_equal(replay.episodes[1]["observations"], data["observations"])
+    np.testing.assert_array_equal(
+        replay.episodes[1]["observations"], data["observations"]
+    )
     np.testing.assert_array_equal(replay.episodes[1]["rewards"], data["rewards"])
 
 

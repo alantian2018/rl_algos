@@ -15,11 +15,17 @@ def model():
 @pytest.mark.parametrize("channels", [1, 3])
 def test_sobel_detects_direction_and_preserves_constant_images(channels):
     constant = torch.ones(2, 3, channels, 8, 8)
-    torch.testing.assert_close(sobel_edges(constant), torch.zeros(2, 3, 2 * channels, 8, 8))
+    torch.testing.assert_close(
+        sobel_edges(constant), torch.zeros(2, 3, 2 * channels, 8, 8)
+    )
     ramp = torch.arange(8, dtype=torch.float32).expand_as(constant)
     edges = sobel_edges(ramp).reshape(2, 3, channels, 2, 8, 8)
-    torch.testing.assert_close(edges[..., 0, :, 1:-1], torch.ones_like(edges[..., 0, :, 1:-1]))
-    torch.testing.assert_close(edges[..., 1, :, :], torch.zeros_like(edges[..., 1, :, :]))
+    torch.testing.assert_close(
+        edges[..., 0, :, 1:-1], torch.ones_like(edges[..., 0, :, 1:-1])
+    )
+    torch.testing.assert_close(
+        edges[..., 1, :, :], torch.zeros_like(edges[..., 1, :, :])
+    )
 
 
 def test_edge_loss_is_weighted_and_trains_encoder_and_decoder(model):
@@ -28,13 +34,20 @@ def test_edge_loss_is_weighted_and_trains_encoder_and_decoder(model):
     obs = torch.rand(1, 2, 3, 64, 64)
     flags = torch.zeros(1, 2, 1, dtype=torch.bool)
     loss, metrics, _ = model.loss(
-        obs, torch.zeros(1, 2, 2), torch.zeros(1, 2, 1), flags, flags, obs,
+        obs,
+        torch.zeros(1, 2, 2),
+        torch.zeros(1, 2, 1),
+        flags,
+        flags,
+        obs,
     )
     assert metrics["edge_loss"] > 0
     torch.testing.assert_close(loss.detach(), 2 * metrics["edge_loss"])
     loss.backward()
     for module in (model.obs_handler.encoder, model.obs_handler.decoder, model.rssm):
-        assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in module.parameters())
+        assert any(
+            p.grad is not None and p.grad.abs().sum() > 0 for p in module.parameters()
+        )
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -94,7 +107,9 @@ def test_sequence_matches_repeated_observe_step(model, batch_size, length):
     truncated = torch.zeros_like(terminated)
     initial = DreamerState(torch.randn(batch_size, 16), torch.randn(batch_size, 8))
     torch.manual_seed(19)
-    states, priors, posteriors = model.observe_sequence(obs, actions, terminated, truncated, next_obs, initial)
+    states, priors, posteriors = model.observe_sequence(
+        obs, actions, terminated, truncated, next_obs, initial
+    )
     assert states.deterministic.shape == (batch_size, length, 16)
     assert states.stochastic.shape == (batch_size, length, 8)
     assert priors.loc.shape == posteriors.loc.shape == (batch_size, length, 8)
@@ -102,7 +117,9 @@ def test_sequence_matches_repeated_observe_step(model, batch_size, length):
     torch.manual_seed(19)
     state, _, _ = model.observe_step(obs[:, 0], initial, torch.zeros(batch_size, 2))
     for t in range(length):
-        state, prior, posterior = model.observe_step(next_obs[:, t], state, actions[:, t])
+        state, prior, posterior = model.observe_step(
+            next_obs[:, t], state, actions[:, t]
+        )
         torch.testing.assert_close(states.deterministic[:, t], state.deterministic)
         torch.testing.assert_close(states.stochastic[:, t], state.stochastic)
         torch.testing.assert_close(priors.loc[:, t], prior.loc)
@@ -125,9 +142,13 @@ def test_done_resets_following_observation_only_for_finished_rows(model):
     changed_actions[:, 0] += 10
 
     torch.manual_seed(23)
-    original, _, _ = model.observe_sequence(obs, actions, terminated, truncated, next_obs)
+    original, _, _ = model.observe_sequence(
+        obs, actions, terminated, truncated, next_obs
+    )
     torch.manual_seed(23)
-    changed, _, _ = model.observe_sequence(changed_obs, changed_actions, terminated, truncated, changed_next_obs)
+    changed, _, _ = model.observe_sequence(
+        changed_obs, changed_actions, terminated, truncated, changed_next_obs
+    )
 
     # Termination at t=0 resets row 0 at t=1, not at t=0.
     assert not torch.allclose(original.get_state()[0, 0], changed.get_state()[0, 0])
@@ -144,9 +165,13 @@ def test_final_done_preserves_terminal_observation_history(model):
     terminated = torch.tensor([[False, False, True]])
     truncated = torch.zeros_like(terminated)
     torch.manual_seed(5)
-    terminal, _, _ = model.observe_sequence(obs, actions, terminated, truncated, next_obs)
+    terminal, _, _ = model.observe_sequence(
+        obs, actions, terminated, truncated, next_obs
+    )
     torch.manual_seed(5)
-    continuing, _, _ = model.observe_sequence(obs, actions, torch.zeros_like(terminated), truncated, next_obs)
+    continuing, _, _ = model.observe_sequence(
+        obs, actions, torch.zeros_like(terminated), truncated, next_obs
+    )
     torch.testing.assert_close(terminal.get_state(), continuing.get_state())
 
 
@@ -176,9 +201,13 @@ def test_recurrent_gradients_stop_at_episode_boundary(model, ending):
 
 @pytest.mark.parametrize("image_size, channels", [((64, 64), 3), ((96, 96), 12)])
 @pytest.mark.parametrize("leading_shape", [(1,), (2, 3)])
-def test_predictions_preserve_shapes_and_frame_order(image_size, channels, leading_shape):
+def test_predictions_preserve_shapes_and_frame_order(
+    image_size, channels, leading_shape
+):
     model = WorldModel(16, 8, 2, image_size, channels, 12, 32)
-    states = DreamerState(torch.randn(*leading_shape, 16), torch.randn(*leading_shape, 8))
+    states = DreamerState(
+        torch.randn(*leading_shape, 16), torch.randn(*leading_shape, 8)
+    )
     result = model.predict(states)
     assert result["reconstructions"].shape == (*leading_shape, channels, *image_size)
     assert result["rewards"].shape == (*leading_shape, 1)
@@ -190,7 +219,9 @@ def test_predictions_preserve_shapes_and_frame_order(image_size, channels, leadi
         states.deterministic[index].unsqueeze(0),
         states.stochastic[index].unsqueeze(0),
     )
-    torch.testing.assert_close(result["reconstructions"][index], model.obs_handler.decode(single)[0])
+    torch.testing.assert_close(
+        result["reconstructions"][index], model.obs_handler.decode(single)[0]
+    )
 
 
 def test_prediction_can_skip_image_decoder(model, monkeypatch):
@@ -204,14 +235,22 @@ def test_prediction_can_skip_image_decoder(model, monkeypatch):
     result = model.predict(states, False)
     assert result["reconstructions"] is None
     torch.testing.assert_close(result["rewards"], expected["rewards"])
-    torch.testing.assert_close(result["continuations"].probs, expected["continuations"].probs)
+    torch.testing.assert_close(
+        result["continuations"].probs, expected["continuations"].probs
+    )
 
 
 def test_world_model_predictions_and_kl_backpropagate_to_all_components(model):
     obs = torch.randn(2, 3, 3, 64, 64)
     actions = torch.randn(2, 3, 2)
     next_obs = torch.randn_like(obs)
-    states, priors, posteriors = model.observe_sequence(obs, actions, torch.zeros(2, 3, dtype=torch.bool), torch.zeros(2, 3, dtype=torch.bool), next_obs)
+    states, priors, posteriors = model.observe_sequence(
+        obs,
+        actions,
+        torch.zeros(2, 3, dtype=torch.bool),
+        torch.zeros(2, 3, dtype=torch.bool),
+        next_obs,
+    )
     predictions = model.predict(states)
     # Exercise existing components together, without defining the future training loss.
     loss = (predictions["reconstructions"] - next_obs).square().mean()
@@ -226,7 +265,9 @@ def test_world_model_predictions_and_kl_backpropagate_to_all_components(model):
 
 @pytest.mark.parametrize("leading_shape", [(1,), (2, 3)])
 def test_actor_and_critic_accept_latent_states(leading_shape):
-    states = DreamerState(torch.randn(*leading_shape, 16), torch.randn(*leading_shape, 8))
+    states = DreamerState(
+        torch.randn(*leading_shape, 16), torch.randn(*leading_shape, 8)
+    )
     actor = Actor(16, 8, 32, 2)
     critic = Critic(16, 8, 32)
     distribution = actor(states)
@@ -251,7 +292,15 @@ def test_loss_accepts_scalar_targets_and_backpropagates(model, trailing_dimensio
         rewards = rewards.unsqueeze(-1)
         terminated = terminated.unsqueeze(-1)
     initial = model.initial_state(2)
-    total, metrics, states = model.loss(obs, actions, rewards, terminated, truncated, torch.randn_like(obs), initial_state=initial)
+    total, metrics, states = model.loss(
+        obs,
+        actions,
+        rewards,
+        terminated,
+        truncated,
+        torch.randn_like(obs),
+        initial_state=initial,
+    )
     assert total.shape == ()
     assert torch.isfinite(total)
     expected_total = (
@@ -269,42 +318,47 @@ def test_loss_accepts_scalar_targets_and_backpropagates(model, trailing_dimensio
         assert torch.isfinite(parameter.grad).all(), name
 
 
-
-
-
-
-
-
-
-
 @pytest.mark.parametrize("sequence_length", [1, 3])
 def test_representation_metrics_measure_time_variation(model, sequence_length):
     obs = torch.randn(2, sequence_length, 3, 64, 64)
     flags = torch.zeros(2, sequence_length, 1, dtype=torch.bool)
     _, metrics, states = model.loss(
-        obs, torch.zeros(2, sequence_length, 2),
-        torch.zeros(2, sequence_length, 1), flags, flags, obs,
+        obs,
+        torch.zeros(2, sequence_length, 2),
+        torch.zeros(2, sequence_length, 1),
+        flags,
+        flags,
+        obs,
     )
     torch.testing.assert_close(
         metrics["stochastic_state_variation"],
         states.stochastic.detach().std(dim=1, correction=0).mean(),
     )
     torch.testing.assert_close(
-        metrics["observation_variation"], obs.std(dim=1, correction=0).mean(),
+        metrics["observation_variation"],
+        obs.std(dim=1, correction=0).mean(),
     )
-    assert all(torch.isfinite(value) and not value.requires_grad for value in metrics.values())
+    assert all(
+        torch.isfinite(value) and not value.requires_grad for value in metrics.values()
+    )
     assert metrics["prior_std"] > 0
     assert metrics["posterior_std"] > 0
     if sequence_length == 1:
-        assert all(value == 0 for key, value in metrics.items() if key.endswith("variation"))
+        assert all(
+            value == 0 for key, value in metrics.items() if key.endswith("variation")
+        )
 
 
 def test_prediction_mask_must_match_batch_and_time(model):
     with pytest.raises(ValueError, match="prediction_mask"):
         model.loss(
-            torch.randn(1, 3, 3, 64, 64), torch.zeros(1, 3, 2),
-            torch.zeros(1, 3), torch.zeros(1, 3, 1, dtype=torch.bool),
-            torch.zeros(1, 3, 1, dtype=torch.bool), next_obs=torch.randn(1, 3, 3, 64, 64), prediction_mask=torch.ones(1, 1),
+            torch.randn(1, 3, 3, 64, 64),
+            torch.zeros(1, 3, 2),
+            torch.zeros(1, 3),
+            torch.zeros(1, 3, 1, dtype=torch.bool),
+            torch.zeros(1, 3, 1, dtype=torch.bool),
+            next_obs=torch.randn(1, 3, 3, 64, 64),
+            prediction_mask=torch.ones(1, 1),
         )
 
 

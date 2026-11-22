@@ -16,11 +16,15 @@ class PixelCarRacing(gymnasium.Wrapper):
         if action_repeat < 1:
             raise ValueError("action_repeat must be positive")
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-        super().__init__(gymnasium.make("CarRacing-v3", continuous=True, render_mode="rgb_array"))
+        super().__init__(
+            gymnasium.make("CarRacing-v3", continuous=True, render_mode="rgb_array")
+        )
         self.image_size = image_size
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
-        self.observation_space = gymnasium.spaces.Box(0, 255, (*image_size, 3), dtype=np.uint8)
+        self.observation_space = gymnasium.spaces.Box(
+            0, 255, (*image_size, 3), dtype=np.uint8
+        )
 
     def pixels(self, obs):
         return cv2.resize(obs, self.image_size[::-1], interpolation=cv2.INTER_AREA)
@@ -37,7 +41,13 @@ class PixelCarRacing(gymnasium.Wrapper):
             if terminated or truncated:
                 break
         info = dict(info, raw_reward=raw_reward)
-        return self.pixels(obs), raw_reward * self.reward_scale, terminated, truncated, info
+        return (
+            self.pixels(obs),
+            raw_reward * self.reward_scale,
+            terminated,
+            truncated,
+            info,
+        )
 
 
 @dataclass
@@ -92,7 +102,9 @@ class CarRacingConfig(DreamerConfig):
 
 @draccus.wrap()
 def main(config: CarRacingConfig):
-    make_env = partial(PixelCarRacing, config.obs_dim, config.action_repeat, config.reward_scale)
+    make_env = partial(
+        PixelCarRacing, config.obs_dim, config.action_repeat, config.reward_scale
+    )
     run_experiment(config, make_env)
 
 

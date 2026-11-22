@@ -3,9 +3,9 @@ import torch
 
 def discount_weights(continuations: torch.Tensor, gamma: float) -> torch.Tensor:
     discounts = gamma * continuations
-    return torch.cumprod(torch.cat([
-        torch.ones_like(discounts[:, :1]), discounts[:, :-1]
-    ], dim=1), dim=1)
+    return torch.cumprod(
+        torch.cat([torch.ones_like(discounts[:, :1]), discounts[:, :-1]], dim=1), dim=1
+    )
 
 
 def lambda_return(
