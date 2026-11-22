@@ -12,8 +12,7 @@ class ReplayBuffer:
         self.capacity = capacity
         self.episodes = deque()
         self.size = 0
-        if seed:
-            self.rng = np.random.default_rng(seed)
+        self.rng = np.random.default_rng(seed)
 
     def add_episode(self, observations, actions, rewards, terminated, truncated):
         """Store T transitions and T+1 observations, including the final one.

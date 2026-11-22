@@ -15,6 +15,7 @@ from dreamer.dreamer.visualization import reconstruct_replay
 def evaluate(agent, config, video_path=None):
     return agent.evaluate(
         config.eval_episodes,
+        seed=config.eval_seed,
         reward_key="raw_reward",
         video_path=video_path,
         video_fps=config.video_fps,

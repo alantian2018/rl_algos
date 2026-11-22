@@ -77,6 +77,7 @@ def test_carracing_experiment_trains_and_logs_media(tmp_path, monkeypatch):
         save_dir=str(tmp_path),
         save_freq=None,
         total_train_steps=1,
+        action_repeat=2,
         before_training_steps=0,
         train_steps_per_episode=1,
         sequence_length=3,

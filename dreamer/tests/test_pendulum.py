@@ -82,6 +82,20 @@ def test_pendulum_defaults_match_pixel_environment():
     assert config.frame_stack == 1
 
 
+@pytest.mark.parametrize("seed", [None, 0, 10_000])
+def test_experiment_passes_configured_evaluation_seed(seed):
+    from unittest.mock import Mock
+    from dreamer.experiments.training import evaluate
+
+    config = PendulumConfig(eval_seed=seed)
+    agent = Mock()
+    evaluate(agent, config)
+    agent.evaluate.assert_called_once_with(
+        config.eval_episodes, seed=seed, reward_key="raw_reward",
+        video_path=None, video_fps=config.video_fps,
+    )
+
+
 def test_world_model_applies_configured_weights_and_free_nats():
     model = WorldModel(16, 8, 1, (64, 64), 1, 12, 32, (0, 0, 0, 2), 3)
     with torch.no_grad():

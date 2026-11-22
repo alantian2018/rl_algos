@@ -40,7 +40,7 @@ class Dreamer(BaseAlgorithm):
         super().__init__(config, env, make_env)
         self.make_env = make_env
 
-        if config.seed:
+        if config.seed is not None:
             torch.manual_seed(config.seed)
             env.action_space.seed(config.seed)
 
@@ -175,7 +175,7 @@ class Dreamer(BaseAlgorithm):
     def evaluate(
         self,
         num_episodes=5,
-        seed=10_000,
+        seed=None,
         deterministic=True,
         reward_key=None,
         video_path=None,

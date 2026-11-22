@@ -11,9 +11,6 @@ from collections import deque
 import signal, pdb
 import os
 import tempfile
-import os
-
-os.environ["WANDB_SILENT"] = "true"
 
 signal.signal(signal.SIGUSR1, lambda s, f: pdb.set_trace())
 
