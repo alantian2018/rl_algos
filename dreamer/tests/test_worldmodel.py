@@ -252,6 +252,28 @@ def test_loss_accepts_scalar_targets_and_backpropagates(model, trailing_dimensio
 
 
 
+@pytest.mark.parametrize("sequence_length", [1, 3])
+def test_representation_metrics_measure_time_variation(model, sequence_length):
+    obs = torch.randn(2, sequence_length, 3, 64, 64)
+    flags = torch.zeros(2, sequence_length, 1, dtype=torch.bool)
+    _, metrics, states = model.loss(
+        obs, torch.zeros(2, sequence_length, 2),
+        torch.zeros(2, sequence_length, 1), flags, flags, obs,
+    )
+    torch.testing.assert_close(
+        metrics["stochastic_state_variation"],
+        states.stochastic.detach().std(dim=1, correction=0).mean(),
+    )
+    torch.testing.assert_close(
+        metrics["observation_variation"], obs.std(dim=1, correction=0).mean(),
+    )
+    assert all(torch.isfinite(value) and not value.requires_grad for value in metrics.values())
+    assert metrics["prior_std"] > 0
+    assert metrics["posterior_std"] > 0
+    if sequence_length == 1:
+        assert all(value == 0 for key, value in metrics.items() if key.endswith("variation"))
+
+
 def test_prediction_mask_must_match_batch_and_time(model):
     with pytest.raises(ValueError, match="prediction_mask"):
         model.loss(

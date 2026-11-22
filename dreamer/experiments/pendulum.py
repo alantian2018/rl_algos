@@ -65,7 +65,7 @@ class PendulumConfig(DreamerConfig):
     stochastic_dim: int = 16
     latent_obs_size: int = 128
     hidden_dim: int = 128
-    batch_size: int = 8
+    batch_size: int = 50
     sequence_length: int = 32
     before_training_steps: int = 5_000
     train_steps_per_episode: int = 50

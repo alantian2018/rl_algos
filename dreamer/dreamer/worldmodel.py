@@ -151,6 +151,17 @@ class WorldModel(nn.Module):
             "kl_loss": L_kl.detach(),
             "raw_kl": raw_kl.detach(),
         }
+        with torch.no_grad():
+            metrics.update({
+                "prior_mean_variation": priors.loc.std(dim=1, correction=0).mean(),
+                "posterior_mean_variation": post.loc.std(dim=1, correction=0).mean(),
+                "prior_std": priors.scale.mean(),
+                "posterior_std": post.scale.mean(),
+                "deterministic_state_variation": states.deterministic.std(dim=1, correction=0).mean(),
+                "stochastic_state_variation": states.stochastic.std(dim=1, correction=0).mean(),
+                "reconstruction_variation": reconstructions.std(dim=1, correction=0).mean(),
+                "observation_variation": next_obs.std(dim=1, correction=0).mean(),
+            })
         return total_loss, metrics, states
    
 
