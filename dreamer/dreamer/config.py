@@ -27,6 +27,7 @@ class DreamerConfig(GlobalConfig):
     return_norm_rate: float = 0.01
 
     reconstruction_weight: float = 1.0
+    edge_weight: float = 0.0
     reward_weight: float = 1.0
     continuation_weight: float = 10.0
     kl_weight: float = 1.0
@@ -48,6 +49,8 @@ class DreamerConfig(GlobalConfig):
     imagination_horizon: int = 15
 
     def __post_init__(self):
+        if not isfinite(self.edge_weight) or self.edge_weight < 0:
+            raise ValueError("edge_weight must be finite and nonnegative")
         if self.action_dim < 1:
             raise ValueError("action_dim must be positive")
         if len(self.action_low) != self.action_dim or len(self.action_high) != self.action_dim:

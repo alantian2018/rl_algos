@@ -4,9 +4,21 @@ import torch.nn.functional as F
 from .rssm import RSSM
 from .networks import RewardDecoder, ContinueDecoder, ObservationHandler, DreamerState
 
+
+def sobel_edges(images):
+    channels = images.shape[-3]
+    kernels = images.new_tensor([
+        [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+        [[-1, -2, -1], [0, 0, 0], [1, 2, 1]],
+    ]).unsqueeze(1).repeat(channels, 1, 1, 1) / 8
+    flat = images.reshape(-1, *images.shape[-3:])
+    edges = F.conv2d(F.pad(flat, (1, 1, 1, 1), mode="replicate"), kernels, groups=channels)
+    return edges.reshape(*images.shape[:-3], 2 * channels, *images.shape[-2:])
+
+
 class WorldModel(nn.Module):
     def __init__(self, deterministic_dim, stochastic_dim, action_dim,  obs_dim, obs_channels, latent_obs_size, hidden_dim,
-                 loss_weights=(1.0, 1.0, 10.0, 1.0), free_nats=0.0):
+                 loss_weights=(1.0, 1.0, 10.0, 1.0), free_nats=0.0, edge_weight=0.0):
         super().__init__()
 
         hidden_state_size = deterministic_dim + stochastic_dim
@@ -15,6 +27,7 @@ class WorldModel(nn.Module):
         self.stochastic_dim = stochastic_dim
         self.loss_weights = loss_weights
         self.free_nats = free_nats
+        self.edge_weight = edge_weight
         self.rssm = RSSM(deterministic_dim, stochastic_dim, action_dim, hidden_dim, latent_obs_size)
         self.obs_handler = ObservationHandler(obs_dim, obs_channels, latent_obs_size, hidden_state_size, hidden_dim)
         self.reward_decoder = RewardDecoder(deterministic_dim, stochastic_dim, hidden_dim)
@@ -125,6 +138,10 @@ class WorldModel(nn.Module):
         sq_error =  0.5 * ((reconstructions - next_obs) ** 2)
         image_loss = sq_error.sum((-3, -2, -1))
         L_reconstruction = image_loss.mean()
+        L_edge = L_reconstruction.new_zeros(())
+        if self.edge_weight > 0:
+            edge_error = sobel_edges(reconstructions) - sobel_edges(next_obs)
+            L_edge = 0.5 * edge_error.square().sum((-3, -2, -1)).mean()
 
 
         targets = 1.0 - terminated.to(continuations.logits)
@@ -143,9 +160,11 @@ class WorldModel(nn.Module):
         total_loss = (
             reconstruction_weight * L_reconstruction + reward_weight * L_rewards
             + continuation_weight * L_continuation + kl_weight * L_kl
+            + self.edge_weight * L_edge
         )
         metrics = {
             "reconstruction_loss": L_reconstruction.detach(),
+            "edge_loss": L_edge.detach(),
             "reward_loss": L_rewards.detach(),
             "continuation_loss": L_continuation.detach(),
             "kl_loss": L_kl.detach(),

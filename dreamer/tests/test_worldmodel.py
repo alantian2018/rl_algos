@@ -3,13 +3,38 @@ import torch
 from torch.distributions import Bernoulli, Normal, kl_divergence
 
 from dreamer.dreamer.networks import Actor, Critic, DreamerState
-from dreamer.dreamer.worldmodel import WorldModel
+from dreamer.dreamer.worldmodel import WorldModel, sobel_edges
 
 
 @pytest.fixture
 def model():
     torch.manual_seed(7)
     return WorldModel(16, 8, 2, (64, 64), 3, 12, 32)
+
+
+@pytest.mark.parametrize("channels", [1, 3])
+def test_sobel_detects_direction_and_preserves_constant_images(channels):
+    constant = torch.ones(2, 3, channels, 8, 8)
+    torch.testing.assert_close(sobel_edges(constant), torch.zeros(2, 3, 2 * channels, 8, 8))
+    ramp = torch.arange(8, dtype=torch.float32).expand_as(constant)
+    edges = sobel_edges(ramp).reshape(2, 3, channels, 2, 8, 8)
+    torch.testing.assert_close(edges[..., 0, :, 1:-1], torch.ones_like(edges[..., 0, :, 1:-1]))
+    torch.testing.assert_close(edges[..., 1, :, :], torch.zeros_like(edges[..., 1, :, :]))
+
+
+def test_edge_loss_is_weighted_and_trains_encoder_and_decoder(model):
+    model.loss_weights = (0, 0, 0, 0)
+    model.edge_weight = 2.0
+    obs = torch.rand(1, 2, 3, 64, 64)
+    flags = torch.zeros(1, 2, 1, dtype=torch.bool)
+    loss, metrics, _ = model.loss(
+        obs, torch.zeros(1, 2, 2), torch.zeros(1, 2, 1), flags, flags, obs,
+    )
+    assert metrics["edge_loss"] > 0
+    torch.testing.assert_close(loss.detach(), 2 * metrics["edge_loss"])
+    loss.backward()
+    for module in (model.obs_handler.encoder, model.obs_handler.decoder, model.rssm):
+        assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in module.parameters())
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

@@ -43,6 +43,7 @@ class Dreamer(BaseAlgorithm):
                 config.obs_dim, config.obs_channels, config.latent_obs_size, config.hidden_dim,
                 (config.reconstruction_weight, config.reward_weight, config.continuation_weight, config.kl_weight),
                 config.free_nats,
+                edge_weight=config.edge_weight,
             )
         if actor is None:
             actor = Actor(

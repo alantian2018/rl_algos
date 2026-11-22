@@ -48,6 +48,8 @@ def test_experiment_dataclass_can_override_defaults():
     {"action_high": (-1.0, 1.0)},
     {"action_low": (float("-inf"), 0.0)},
     {"sequence_length": 0},
+    {"edge_weight": -1},
+    {"edge_weight": float("nan")},
     {"replay_buffer_capacity": 2},
 ])
 def test_invalid_settings_are_rejected(overrides):

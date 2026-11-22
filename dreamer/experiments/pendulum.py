@@ -76,6 +76,11 @@ class PendulumConfig(DreamerConfig):
     critic_lr: float = 8e-5
     imagination_horizon: int = 15
     free_nats: float = 3.0
+    reconstruction_weight: float = 1.0
+    edge_weight: float = 1.0
+    reward_weight: float = 1.0
+    continuation_weight: float = 10.0
+    kl_weight: float = 1.0
     device: str = "mps"
     use_wandb: bool = True
     save_freq: int = 10_000
