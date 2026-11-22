@@ -47,6 +47,8 @@ class DreamerConfig(GlobalConfig):
     lambda_: float = 0.95
     imagination_horizon: int = 15
 
+    seed: int | None = None
+
     def __post_init__(self):
         if not isfinite(self.edge_weight) or self.edge_weight < 0:
             raise ValueError("edge_weight must be finite and nonnegative")
