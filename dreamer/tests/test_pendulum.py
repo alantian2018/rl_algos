@@ -105,7 +105,7 @@ def test_pixel_experiment_saves_reconstruction_images(tmp_path):
         sequence_length=3, batch_size=1, imagination_horizon=2,
         deterministic_dim=16, stochastic_dim=8, latent_obs_size=12, hidden_dim=32,
         eval_episodes=1, video_log_freq=None, reconstruction_log_freq=1,
-        num_threads=1,
+        num_threads=1, action_repeat=2,
     )
     main.__wrapped__(config)
     assert len(list(tmp_path.rglob("reconstruction_100.png"))) == 1

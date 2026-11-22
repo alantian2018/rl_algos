@@ -170,11 +170,11 @@ class Dreamer(BaseAlgorithm):
         deterministic = [state.deterministic]
         stochastic = [state.stochastic]
         
-        actions, rewards, continuations, log_probs = [], [], [], []
+        actions, rewards, continuations, raw_actions = [], [], [], []
 
         values = [self.critic(state)]
         for _ in range(imagine_horizon):
-            action, log_prob, _ = self.actor.get_action(state)
+            action, _, info = self.actor.get_action(state)
             next_state, reward, continuation = self.world_model.step_env(state, action)
             next_value = self.critic(next_state)
 
@@ -184,7 +184,7 @@ class Dreamer(BaseAlgorithm):
             rewards.append(reward)
             continuations.append(continuation)
             values.append(next_value)
-            log_probs.append(log_prob)
+            raw_actions.append(info["raw_action"])
             state = next_state
 
         imagined_states = DreamerState(
@@ -195,8 +195,8 @@ class Dreamer(BaseAlgorithm):
         rewards = torch.stack(rewards, dim=1)
         continuations = torch.stack(continuations, dim=1)
         values = torch.stack(values, dim=1)
-        log_probs = torch.stack(log_probs, dim=1)
-        return imagined_states, actions, rewards, continuations, values, log_probs
+        raw_actions = torch.stack(raw_actions, dim=1)
+        return imagined_states, actions, rewards, continuations, values, raw_actions
 
     def update_actor_critic(self,
                             imagined_states,
@@ -204,7 +204,7 @@ class Dreamer(BaseAlgorithm):
                             rewards,
                             continuations,
                             values,
-                            log_probs):
+                            raw_actions):
         
         with torch.no_grad():
             returns = lambda_return(
@@ -220,7 +220,7 @@ class Dreamer(BaseAlgorithm):
             imagined_states.deterministic[:, :-1].detach(),
             imagined_states.stochastic[:, :-1].detach(),
         )
-        log_probs = self.actor.get_log_prob(states, actions)
+        log_probs = self.actor.get_log_prob(states, actions, raw_actions=raw_actions)
         entropy_actions, entropy_log_probs, actor_info = self.actor.get_action(states)
         entropy = -entropy_log_probs
         actor_loss = -(weights * (

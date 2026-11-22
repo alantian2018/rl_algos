@@ -242,12 +242,15 @@ def test_imagination_preserves_start_states_and_advances_trajectory(config, monk
 
     monkeypatch.setattr(algorithm.world_model, "step_env", step)
     monkeypatch.setattr(algorithm.env, "step", unexpected_env_step)
-    trajectory, actions, rewards, continuations, values, log_probs = algorithm.imagine_rollout(states, horizon)
+    trajectory, actions, rewards, continuations, values, raw_actions = algorithm.imagine_rollout(states, horizon)
     assert trajectory.deterministic.shape == (6, horizon + 1, 16)
     assert trajectory.stochastic.shape == (6, horizon + 1, 8)
     assert actions.shape == (6, horizon, 2)
     assert values.shape == (6, horizon + 1, 1)
-    assert rewards.shape == continuations.shape == log_probs.shape == (6, horizon, 1)
+    assert rewards.shape == continuations.shape == (6, horizon, 1)
+    assert raw_actions.shape == actions.shape
+    scale = (algorithm.actor.action_high - algorithm.actor.action_low) / 2
+    torch.testing.assert_close(actions, algorithm.actor.action_low + (raw_actions.tanh() + 1) * scale)
     torch.testing.assert_close(trajectory.get_state()[:, 0], states.flatten().get_state())
     for t in range(horizon):
         torch.testing.assert_close(seen_states[t].get_state(), trajectory.get_state()[:, t])
@@ -261,11 +264,11 @@ def test_reinforce_imagination_has_no_gradients_or_parameter_flag_changes(config
     parameters = list(algorithm.world_model.parameters()) + list(algorithm.critic.parameters())
     parameters[0].requires_grad_(False)
     original_flags = [p.requires_grad for p in parameters]
-    trajectory, actions, rewards, continuations, values, log_probs = algorithm.imagine_rollout(states, 3)
+    trajectory, actions, rewards, continuations, values, raw_actions = algorithm.imagine_rollout(states, 3)
     assert [p.requires_grad for p in parameters] == original_flags
     assert not trajectory.deterministic.requires_grad
     assert not trajectory.stochastic.requires_grad
-    assert all(not tensor.requires_grad for tensor in (actions, rewards, continuations, values, log_probs))
+    assert all(not tensor.requires_grad for tensor in (actions, rewards, continuations, values, raw_actions))
 
 
 def test_reinforce_update_changes_actor_and_critic_without_model_gradients(config):
@@ -301,9 +304,34 @@ def test_positive_advantage_increases_selected_actions_likelihood(config):
     values = torch.zeros(1, 2, 1)
     actor_states = DreamerState(states.deterministic[:, :-1], states.stochastic[:, :-1])
     before = algorithm.actor.get_log_prob(actor_states, actions).detach()
-    algorithm.update_actor_critic(states, actions, rewards, continuations, values, torch.zeros(1, 1, 1))
+    algorithm.update_actor_critic(states, actions, rewards, continuations, values, actions)
     after = algorithm.actor.get_log_prob(actor_states, actions).detach()
     assert (after > before).all()
+
+
+def test_saturated_policy_update_uses_original_gaussian_samples(config, monkeypatch):
+    config.entropy_coefficient = 0
+    algorithm = Dreamer(config, ShortImageEnv())
+    with torch.no_grad():
+        algorithm.actor.mu_head.weight.zero_()
+        algorithm.actor.mu_head.bias.copy_(torch.tensor([-100.0, 100.0]))
+    states = DreamerState(torch.zeros(2, 16), torch.zeros(2, 8))
+    rollout = algorithm.imagine_rollout(states, 3)
+    original = algorithm.actor.get_log_prob
+    seen = []
+
+    def get_log_prob(state, actions, raw_actions=None):
+        assert raw_actions is not None
+        torch.testing.assert_close(raw_actions, rollout[-1])
+        assert raw_actions.abs().min() > 90
+        seen.append(True)
+        return original(state, actions, raw_actions=raw_actions)
+
+    monkeypatch.setattr(algorithm.actor, "get_log_prob", get_log_prob)
+    metrics = algorithm.update_actor_critic(*rollout)
+    assert seen
+    assert all(torch.isfinite(value) for value in metrics.values())
+    assert metrics["actor_grad_norm"] < 100
 
 
 def test_return_normalization_tracks_smoothed_percentiles(config):
@@ -314,10 +342,10 @@ def test_return_normalization_tracks_smoothed_percentiles(config):
     rewards = torch.tensor([[[0.0]], [[100.0]]])
     continuation = torch.zeros(2, 1, 1)
     values = torch.zeros(2, 2, 1)
-    metrics = algorithm.update_actor_critic(states, actions, rewards, continuation, values, torch.zeros_like(rewards))
+    metrics = algorithm.update_actor_critic(states, actions, rewards, continuation, values, torch.zeros_like(actions))
     torch.testing.assert_close(algorithm.return_quantiles, torch.tensor([5.0, 95.0]))
     torch.testing.assert_close(metrics["return_scale"], torch.tensor(90.0))
-    algorithm.update_actor_critic(states, actions, rewards * 2, continuation, values, torch.zeros_like(rewards))
+    algorithm.update_actor_critic(states, actions, rewards * 2, continuation, values, torch.zeros_like(actions))
     torch.testing.assert_close(algorithm.return_quantiles, torch.tensor([6.25, 118.75]))
 
 

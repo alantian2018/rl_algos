@@ -88,17 +88,25 @@ class Actor(nn.Module):
             action = self.action_low + (torch.tanh(raw_action) + 1) * scale
             log_jacobian = 2 * (torch.log(raw_action.new_tensor(2.0)) - raw_action - F.softplus(-2 * raw_action))
             log_prob = log_prob - log_jacobian - torch.log(scale)
-        info = {"mu": distribution.loc.detach(), "std": distribution.scale.detach()}
+        info = {
+            "mu": distribution.loc.detach(), "std": distribution.scale.detach(),
+            "raw_action": raw_action.detach(),
+        }
         return action, log_prob.sum(dim=-1, keepdim=True), info
 
-    def get_log_prob(self, dreamer_state: DreamerState, actions):
+    def get_log_prob(self, dreamer_state: DreamerState, actions, raw_actions=None):
         distribution = self(dreamer_state)
-        raw_actions = actions.detach()
+        if raw_actions is None:
+            raw_actions = actions.detach()
+            if self.squash_actions:
+                scale = (self.action_high - self.action_low) / 2
+                normalized = (raw_actions - self.action_low) / scale - 1
+                epsilon = torch.finfo(normalized.dtype).eps
+                raw_actions = torch.atanh(normalized.clamp(-1 + epsilon, 1 - epsilon))
+        else:
+            raw_actions = raw_actions.detach()
         if self.squash_actions:
             scale = (self.action_high - self.action_low) / 2
-            normalized = (raw_actions - self.action_low) / scale - 1
-            epsilon = torch.finfo(normalized.dtype).eps
-            raw_actions = torch.atanh(normalized.clamp(-1 + epsilon, 1 - epsilon))
             log_jacobian = 2 * (torch.log(raw_actions.new_tensor(2.0)) - raw_actions - F.softplus(-2 * raw_actions))
             log_prob = distribution.log_prob(raw_actions) - log_jacobian - torch.log(scale)
         else:

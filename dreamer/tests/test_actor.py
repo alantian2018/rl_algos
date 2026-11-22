@@ -102,6 +102,26 @@ def test_reinforce_log_prob_treats_sampled_action_as_fixed():
     assert action.grad is None
 
 
+def test_saved_raw_actions_preserve_saturated_log_probs_and_score_gradients():
+    actor = Actor(16, 8, 32, 2, (-2.0, 0.0), (2.0, 1.0))
+    with torch.no_grad():
+        actor.mu_head.weight.zero_()
+        actor.mu_head.bias.copy_(torch.tensor([-100.0, 100.0]))
+    states = DreamerState(torch.zeros(8, 16), torch.zeros(8, 8))
+    with torch.no_grad():
+        actions, expected, info = actor.get_action(states)
+    torch.testing.assert_close(actions, actor.action_low.new_tensor([-2.0, 1.0]).expand_as(actions))
+    raw_actions = info["raw_action"].clone().requires_grad_()
+    log_probs = actor.get_log_prob(states, actions, raw_actions=raw_actions)
+    torch.testing.assert_close(log_probs, expected)
+    distribution = actor(states)
+    expected_gradient = ((raw_actions.detach() - distribution.loc.detach()) / distribution.scale.detach().square()).sum(0)
+    log_probs.sum().backward()
+    torch.testing.assert_close(actor.mu_head.bias.grad, expected_gradient)
+    assert raw_actions.grad is None
+    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in actor.parameters())
+
+
 def test_actor_std_is_bounded_without_changing_mean():
     actor = Actor(16, 8, 32, 2)
     with torch.no_grad():
